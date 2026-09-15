@@ -22,11 +22,23 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // If there's no authenticated user or profile, redirect to login
+  // Determine authentication
   const isAuthenticated = isConfigured ? Boolean(user) : Boolean(profile);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // If authenticated but onboarding is pending, redirect to /onboarding
+  const isOnboardingRoute = location.pathname === '/onboarding';
+  const hasCompletedOnboarding = Boolean(profile?.onboarding_completed);
+
+  if (!hasCompletedOnboarding && !isOnboardingRoute) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (hasCompletedOnboarding && isOnboardingRoute) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

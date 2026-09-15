@@ -21,10 +21,13 @@ import {
 import { InboxThread } from '../../types';
 import { useAppState } from '../../lib/state/AppStateContext';
 import { useToast } from '../../lib/state/ToastContext';
+import { useAuth } from '../../lib/auth/AuthProvider';
 
 export function InboxView() {
   const { inboxThreads: threads, sendReply } = useAppState();
   const { showToast } = useToast();
+  const { profile, user } = useAuth();
+  const userName = profile?.full_name || user?.email?.split('@')[0] || 'You';
   const { setSelectedProspectId } = useOutletContext<{ setSelectedProspectId: (id: string | null) => void }>();
   const [selectedCategory, setSelectedCategory] = useState<
     'all' | 'unread' | 'interested' | 'not_interested' | 'follow_up' | 'archived'
@@ -301,7 +304,7 @@ export function InboxView() {
                   >
                     <div className="flex items-center justify-between text-[11px] text-[#949494] pb-1 border-b border-black/[0.04]">
                       <span className="font-medium text-[#686868]">
-                        {msg.sender === 'user' ? 'You (Alex Vance)' : activeThread.prospectName}
+                        {msg.sender === 'user' ? `You (${userName})` : activeThread.prospectName}
                       </span>
                       <span className="font-mono">{msg.timestamp}</span>
                     </div>

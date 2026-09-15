@@ -51,9 +51,9 @@ export function AppLayout() {
 
   const interestedInboxCount = inboxThreads.filter((t) => t.classification === 'interested').length;
 
-  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Alex Vance';
-  const displayEmail = profile?.email || user?.email || 'alex@growthstudio.co';
-  const workspaceName = workspace?.name || 'GrowthStudio';
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
+  const displayEmail = profile?.email || user?.email || '';
+  const workspaceName = workspace?.name || 'My Workspace';
 
   const navItems = [
     { id: '', label: 'Overview', icon: LayoutDashboard },
@@ -155,20 +155,19 @@ export function AppLayout() {
             })}
           </nav>
 
-          {/* Quick Stat / Deliverability Pill */}
-          <div className="p-3 mx-3 mb-3 rounded-xl bg-[#F7F7F5] border border-black/[0.05] space-y-1.5">
+          {/* Mailbox Status Card */}
+          <div className="p-3 mx-3 mb-3 rounded-xl bg-[#F7F7F5] border border-black/[0.05] space-y-1">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-[#686868] font-medium">Mailbox Warmup</span>
-              <span className="text-emerald-700 font-semibold">
-                {workspace?.mailbox_provider === 'Set up later' ? 'Pending Setup' : '98% Health'}
+              <span className="text-[#686868] font-medium">Mailbox</span>
+              <span className={`font-semibold ${workspace?.mailbox_provider && workspace.mailbox_provider !== 'Set up later' ? 'text-blue-700' : 'text-stone-500'}`}>
+                {workspace?.mailbox_provider && workspace.mailbox_provider !== 'Set up later' ? workspace.mailbox_provider : 'Not connected'}
               </span>
             </div>
-            <div className="h-1 w-full bg-stone-200 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full ${workspace?.mailbox_provider === 'Set up later' ? 'bg-amber-400' : 'bg-emerald-500'}`}
-                style={{ width: workspace?.mailbox_provider === 'Set up later' ? '40%' : '98%' }}
-              />
-            </div>
+            <p className="text-[10px] text-[#888] leading-tight">
+              {workspace?.mailbox_provider && workspace.mailbox_provider !== 'Set up later'
+                ? 'Provider configured'
+                : 'Connect a mailbox to enable sending'}
+            </p>
           </div>
 
           {/* User Profile Bar */}

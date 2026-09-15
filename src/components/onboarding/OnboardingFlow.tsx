@@ -28,8 +28,8 @@ const steps = [
 ];
 
 export function OnboardingFlow({ onComplete, initialProfile }: OnboardingFlowProps) {
-  const { workspace, updateWorkspace, createWorkspace } = useWorkspace();
-  const { profile } = useAuth();
+  const { workspace, updateWorkspace, createWorkspace, refreshWorkspaces } = useWorkspace();
+  const { profile, updateProfile, refreshProfile } = useAuth();
 
   const [step, setStep] = useState(0);
   const [workspaceName, setWorkspaceName] = useState(initialProfile?.workspaceName || workspace?.name || '');
@@ -41,6 +41,7 @@ export function OnboardingFlow({ onComplete, initialProfile }: OnboardingFlowPro
   const [mailboxProvider, setMailboxProvider] = useState<OnboardingProfile['mailboxProvider']>(
     initialProfile?.mailboxProvider || (workspace?.mailbox_provider as any) || 'Set up later'
   );
+  const [isSaving, setIsSaving] = useState(false);
 
   const canContinue = useMemo(() => {
     if (step === 0) return workspaceName.trim().length >= 2;
@@ -49,41 +50,58 @@ export function OnboardingFlow({ onComplete, initialProfile }: OnboardingFlowPro
   }, [step, workspaceName, industry, geography, offer]);
 
   const finish = async () => {
-    const onboardingData: OnboardingProfile = {
-      workspaceName: workspaceName.trim(),
-      role,
-      industry: industry.trim(),
-      geography: geography.trim(),
-      companySize,
-      offer: offer.trim(),
-      mailboxProvider,
-      mailboxStatus: mailboxProvider === 'Set up later' ? 'pending' : 'pending',
-      completedAt: new Date().toISOString(),
-    };
+    setIsSaving(true);
+    try {
+      const onboardingData: OnboardingProfile = {
+        workspaceName: workspaceName.trim(),
+        role,
+        industry: industry.trim(),
+        geography: geography.trim(),
+        companySize,
+        offer: offer.trim(),
+        mailboxProvider,
+        mailboxStatus: mailboxProvider === 'Set up later' ? 'pending' : 'pending',
+        completedAt: new Date().toISOString(),
+      };
 
-    if (workspace) {
-      await updateWorkspace({
-        name: onboardingData.workspaceName,
-        industry: onboardingData.industry,
-        geography: onboardingData.geography,
-        company_size: onboardingData.companySize,
-        offer: onboardingData.offer,
-        mailbox_provider: onboardingData.mailboxProvider,
-        onboarding_completed_at: onboardingData.completedAt,
+      // 1. Update user profile with role and mark onboarding completed
+      await updateProfile({
+        role,
+        onboarding_completed: true,
       });
-    } else {
-      await createWorkspace({
-        name: onboardingData.workspaceName,
-        industry: onboardingData.industry,
-        geography: onboardingData.geography,
-        company_size: onboardingData.companySize,
-        offer: onboardingData.offer,
-        mailbox_provider: onboardingData.mailboxProvider,
-        onboarding_completed_at: onboardingData.completedAt,
-      });
+
+      // 2. Create or update workspace and add user to workspace_members as owner
+      if (workspace) {
+        await updateWorkspace({
+          name: onboardingData.workspaceName,
+          industry: onboardingData.industry,
+          geography: onboardingData.geography,
+          company_size: onboardingData.companySize,
+          offer: onboardingData.offer,
+          mailbox_provider: onboardingData.mailboxProvider,
+          onboarding_completed_at: onboardingData.completedAt,
+        });
+      } else {
+        await createWorkspace({
+          name: onboardingData.workspaceName,
+          industry: onboardingData.industry,
+          geography: onboardingData.geography,
+          company_size: onboardingData.companySize,
+          offer: onboardingData.offer,
+          mailbox_provider: onboardingData.mailboxProvider,
+          onboarding_completed_at: onboardingData.completedAt,
+        });
+      }
+
+      await refreshWorkspaces();
+      await refreshProfile();
+
+      onComplete(onboardingData);
+    } catch (err) {
+      console.error('Failed to complete onboarding:', err);
+    } finally {
+      setIsSaving(false);
     }
-
-    onComplete(onboardingData);
   };
 
 

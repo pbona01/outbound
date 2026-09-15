@@ -8,6 +8,9 @@ export interface UserProfile {
   full_name?: string;
   avatar_url?: string;
   role?: string;
+  onboarding_completed?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface AuthContextType {
@@ -17,20 +20,22 @@ interface AuthContextType {
   isLoading: boolean;
   isConfigured: boolean;
   signIn: (email: string, password?: string) => Promise<{ error: any }>;
+  signInWithMagicLink: (email: string) => Promise<{ error: any }>;
   signUp: (email: string, password?: string, fullName?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Local fallback user for dev mode or when unauthenticated
-const DEV_DEFAULT_USER: UserProfile = {
-  id: 'usr-dev-alex',
-  email: 'alex@growthstudio.co',
-  full_name: 'Alex Vance',
-  role: 'Agency Founder',
+const DEV_MOCK_USER: UserProfile = {
+  id: 'usr-dev-demo',
+  email: 'demo@outboundos.com',
+  full_name: 'Demo User',
+  role: 'Owner',
+  onboarding_completed: true,
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -47,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (data && !error) {
         setProfile(data);
@@ -57,29 +62,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: email,
           full_name: email.split('@')[0],
           role: 'Owner',
+          onboarding_completed: false,
         };
         await supabase.from('profiles').upsert(newProfile);
         setProfile(newProfile);
       }
     } catch {
-      setProfile({ id: userId, email, full_name: email.split('@')[0] });
+      setProfile({ id: userId, email, full_name: email.split('@')[0], onboarding_completed: false });
     }
   };
 
   useEffect(() => {
     if (!configured) {
-      // Check local storage for logged-in user session
-      try {
-        const stored = localStorage.getItem('outbound_auth_user');
-        if (stored) {
-          setProfile(JSON.parse(stored));
-        } else {
-          // Default initial demo user on first visit
-          localStorage.setItem('outbound_auth_user', JSON.stringify(DEV_DEFAULT_USER));
-          setProfile(DEV_DEFAULT_USER);
-        }
-      } catch {
-        setProfile(DEV_DEFAULT_USER);
+      if (import.meta.env.VITE_USE_MOCK_API === 'true') {
+        setProfile(DEV_MOCK_USER);
+      } else {
+        setProfile(null);
       }
       setIsLoading(false);
       return;
@@ -89,11 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id, session.user.email || '');
+        fetchProfile(session.user.id, session.user.email || '').finally(() => {
+          setIsLoading(false);
+        });
       } else {
         setProfile(null);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -112,40 +112,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password?: string) => {
     if (!configured) {
-      const nameFromEmail = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-      const newProf: UserProfile = {
-        id: `usr-${Date.now()}`,
-        email: email,
-        full_name: nameFromEmail || 'Account User',
-        role: 'Workspace Owner',
-      };
-      localStorage.setItem('outbound_auth_user', JSON.stringify(newProf));
-      setProfile(newProf);
-      return { error: null };
+      if (import.meta.env.VITE_USE_MOCK_API === 'true') {
+        const mockProf: UserProfile = {
+          id: `usr-${Date.now()}`,
+          email,
+          full_name: email.split('@')[0],
+          role: 'Owner',
+          onboarding_completed: true,
+        };
+        setProfile(mockProf);
+        return { error: null };
+      }
+      return { error: new Error('Supabase is not configured.') };
     }
     const { error } = await supabase.auth.signInWithPassword({
       email,
-      password: password || 'Outbound123!',
+      password: password || '',
+    });
+    return { error };
+  };
+
+  const signInWithMagicLink = async (email: string) => {
+    if (!configured) {
+      return { error: new Error('Supabase is not configured.') };
+    }
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
     });
     return { error };
   };
 
   const signUp = async (email: string, password?: string, fullName?: string) => {
     if (!configured) {
-      const newProf: UserProfile = {
-        id: `usr-${Date.now()}`,
-        email: email,
-        full_name: fullName || email.split('@')[0],
-        role: 'Workspace Owner',
-      };
-      localStorage.setItem('outbound_auth_user', JSON.stringify(newProf));
-      setProfile(newProf);
-      return { error: null };
+      if (import.meta.env.VITE_USE_MOCK_API === 'true') {
+        const mockProf: UserProfile = {
+          id: `usr-${Date.now()}`,
+          email,
+          full_name: fullName || email.split('@')[0],
+          role: 'Owner',
+          onboarding_completed: false,
+        };
+        setProfile(mockProf);
+        return { error: null };
+      }
+      return { error: new Error('Supabase is not configured.') };
     }
     const { data, error } = await supabase.auth.signUp({
       email,
-      password: password || 'Outbound123!',
-      options: { data: { full_name: fullName } },
+      password: password || '',
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
     });
     if (data.user) {
       await fetchProfile(data.user.id, email);
@@ -157,11 +179,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (configured) {
       await supabase.auth.signOut();
     }
-    try {
-      localStorage.removeItem('outbound_auth_user');
-    } catch (e) {
-      // ignore
-    }
     setUser(null);
     setSession(null);
     setProfile(null);
@@ -169,8 +186,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     if (!configured) return { error: null };
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
     return { error };
+  };
+
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user && !profile) return { error: new Error('No active user profile') };
+    const targetId = user?.id || profile?.id;
+    if (!targetId) return { error: new Error('No user id') };
+
+    const merged = { ...profile, ...updates, updated_at: new Date().toISOString() };
+    setProfile(merged as UserProfile);
+
+    if (configured && user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+      return { error };
+    }
+    return { error: null };
   };
 
   const refreshProfile = async () => {
@@ -188,9 +225,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isConfigured: configured,
         signIn,
+        signInWithMagicLink,
         signUp,
         signOut,
         resetPassword,
+        updateProfile,
         refreshProfile,
       }}
     >

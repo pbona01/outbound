@@ -31,7 +31,7 @@ export function OverviewView() {
   const { setIsCampaignWizardOpen } = useOutletContext<{ setIsCampaignWizardOpen: (v: boolean) => void }>();
 
   const userName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Operator';
-  const workspaceName = workspace?.name || 'GrowthStudio';
+  const workspaceName = workspace?.name || 'My Workspace';
 
   const onCreateCampaign = () => setIsCampaignWizardOpen(true);
   const onSelectCampaign = (campaign: Campaign) => navigate(`/campaigns`);

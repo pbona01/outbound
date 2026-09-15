@@ -14,12 +14,14 @@ export interface Workspace {
   mailbox_provider?: string;
   onboarding_completed_at?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 interface WorkspaceContextType {
   workspace: Workspace | null;
   workspaces: Workspace[];
   isLoading: boolean;
+  error: string | null;
   switchWorkspace: (workspaceId: string) => void;
   updateWorkspace: (updates: Partial<Workspace>) => Promise<Workspace | null>;
   createWorkspace: (data: Partial<Workspace>) => Promise<Workspace | null>;
@@ -28,67 +30,72 @@ interface WorkspaceContextType {
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
-const DEV_FALLBACK_WORKSPACE: Workspace = {
-  id: 'ws-growthstudio-01',
-  name: 'GrowthStudio',
-  industry: 'Kitchen & Bath Remodeling',
-  geography: 'Texas',
-  company_size: '5–50 employees',
-  offer: 'Conversion-focused website redesigns & instant quote calculators',
-  mailbox_provider: 'Google Workspace',
-  onboarding_completed_at: new Date().toISOString(),
+const MOCK_FALLBACK_WORKSPACE: Workspace = {
+  id: 'ws-demo-01',
+  name: 'Demo Workspace',
+  industry: 'B2B Software',
+  geography: 'North America',
+  company_size: '10–50 employees',
+  offer: 'AI Outbound System',
+  mailbox_provider: 'Set up later',
+  created_at: new Date().toISOString(),
 };
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { user, profile } = useAuth();
-  const [workspace, setWorkspace] = useState<Workspace | null>(DEV_FALLBACK_WORKSPACE);
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([DEV_FALLBACK_WORKSPACE]);
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   const configured = isSupabaseConfigured();
 
   const loadWorkspaces = async () => {
-    if (!configured || !user) {
-      setWorkspace(DEV_FALLBACK_WORKSPACE);
-      setWorkspaces([DEV_FALLBACK_WORKSPACE]);
+    setIsLoading(true);
+    setError(null);
+
+    if (!configured) {
+      if (import.meta.env.VITE_USE_MOCK_API === 'true') {
+        setWorkspace(MOCK_FALLBACK_WORKSPACE);
+        setWorkspaces([MOCK_FALLBACK_WORKSPACE]);
+      } else {
+        setWorkspace(null);
+        setWorkspaces([]);
+      }
+      setIsLoading(false);
+      return;
+    }
+
+    if (!user) {
+      setWorkspace(null);
+      setWorkspaces([]);
       setIsLoading(false);
       return;
     }
 
     try {
-      // Fetch user's workspaces via workspace_members or owner_id
-      const { data, error } = await supabase
+      // Fetch workspaces where user is owner or member
+      const { data, error: wsErr } = await supabase
         .from('workspaces')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (data && data.length > 0 && !error) {
+      if (wsErr) {
+        throw wsErr;
+      }
+
+      if (data && data.length > 0) {
         setWorkspaces(data);
         const storedId = localStorage.getItem('outbound_workspace_id');
         const matched = data.find((w) => w.id === storedId) || data[0];
         setWorkspace(matched);
+        localStorage.setItem('outbound_workspace_id', matched.id);
       } else {
-        // Create default workspace for new user
-        const defaultWs: Partial<Workspace> = {
-          name: profile?.full_name ? `${profile.full_name}'s Workspace` : 'Northstar Sales',
-          owner_id: user.id,
-          industry: 'B2B Services',
-          geography: 'United States',
-          mailbox_provider: 'Google Workspace',
-        };
-        const { data: created } = await supabase.from('workspaces').insert(defaultWs).select().single();
-        if (created) {
-          await supabase.from('workspace_members').insert({
-            workspace_id: created.id,
-            user_id: user.id,
-            role: 'owner',
-          });
-          setWorkspace(created);
-          setWorkspaces([created]);
-        }
+        setWorkspaces([]);
+        setWorkspace(null);
       }
-    } catch {
-      setWorkspace(DEV_FALLBACK_WORKSPACE);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load workspaces');
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +103,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadWorkspaces();
-  }, [user, configured]);
+  }, [user?.id, configured]);
 
   const switchWorkspace = (workspaceId: string) => {
     const found = workspaces.find((w) => w.id === workspaceId);
@@ -112,45 +119,80 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setWorkspace(updated);
 
     if (configured) {
-      await supabase.from('workspaces').update(updates).eq('id', workspace.id);
+      const { error: err } = await supabase.from('workspaces').update(updates).eq('id', workspace.id);
+      if (err) throw err;
     }
     return updated;
   };
 
   const createWorkspace = async (data: Partial<Workspace>): Promise<Workspace | null> => {
-    const newWs: Workspace = {
-      id: `ws-${Date.now()}`,
-      name: data.name || 'New Workspace',
-      industry: data.industry || '',
-      geography: data.geography || '',
-      company_size: data.company_size || '5-50 employees',
-      offer: data.offer || '',
-      mailbox_provider: data.mailbox_provider || 'Set up later',
-      onboarding_completed_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-    };
+    if (!user) {
+      if (import.meta.env.VITE_USE_MOCK_API === 'true') {
+        const mockWs: Workspace = {
+          id: `ws-${Date.now()}`,
+          name: data.name || 'My Workspace',
+          slug: data.slug || `ws-${Date.now()}`,
+          industry: data.industry || '',
+          geography: data.geography || '',
+          company_size: data.company_size || '5-50 employees',
+          offer: data.offer || '',
+          mailbox_provider: data.mailbox_provider || 'Set up later',
+          created_at: new Date().toISOString(),
+        };
+        setWorkspace(mockWs);
+        setWorkspaces((prev) => [mockWs, ...prev]);
+        localStorage.setItem('outbound_workspace_id', mockWs.id);
+        return mockWs;
+      }
+      throw new Error('You must be signed in to create a workspace.');
+    }
 
-    if (configured && user) {
-      const { data: dbWs } = await supabase
+    try {
+      const slug = data.slug || (data.name ? data.name.toLowerCase().replace(/[^a-z0-9]/g, '-') : `ws-${Date.now()}`);
+      const payload = {
+        name: data.name || 'My Workspace',
+        slug: `${slug}-${Math.random().toString(36).substring(2, 6)}`,
+        owner_id: user.id,
+        industry: data.industry || '',
+        geography: data.geography || '',
+        company_size: data.company_size || '5-50 employees',
+        offer: data.offer || '',
+        mailbox_provider: data.mailbox_provider || 'Set up later',
+        onboarding_completed_at: new Date().toISOString(),
+      };
+
+      const { data: dbWs, error: insertError } = await supabase
         .from('workspaces')
-        .insert({ ...data, owner_id: user.id })
+        .insert(payload)
         .select()
         .single();
+
+      if (insertError) {
+        throw insertError;
+      }
+
       if (dbWs) {
+        // Add user as owner in workspace_members
         await supabase.from('workspace_members').insert({
           workspace_id: dbWs.id,
           user_id: user.id,
           role: 'owner',
         });
-        setWorkspaces((prev) => [dbWs, ...prev]);
+
         setWorkspace(dbWs);
+        setWorkspaces((prev) => [dbWs, ...prev]);
+        localStorage.setItem('outbound_workspace_id', dbWs.id);
         return dbWs;
       }
+      return null;
+    } catch (err: any) {
+      setError(err.message || 'Error creating workspace');
+      throw err;
     }
+  };
 
-    setWorkspaces((prev) => [newWs, ...prev]);
-    setWorkspace(newWs);
-    return newWs;
+  const refreshWorkspaces = async () => {
+    await loadWorkspaces();
   };
 
   return (
@@ -159,10 +201,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         workspace,
         workspaces,
         isLoading,
+        error,
         switchWorkspace,
         updateWorkspace,
         createWorkspace,
-        refreshWorkspaces: loadWorkspaces,
+        refreshWorkspaces,
       }}
     >
       {children}

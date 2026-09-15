@@ -1,3 +1,34 @@
+export interface Profile {
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  role?: string;
+  onboarding_completed: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface WorkspaceRecord {
+  id: string;
+  name: string;
+  slug: string;
+  owner_id?: string;
+  industry?: string;
+  geography?: string;
+  company_size?: string;
+  offer?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface WorkspaceMemberRecord {
+  workspace_id: string;
+  user_id: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  created_at?: string;
+}
+
 export interface User {
   id: string;
   name: string;
