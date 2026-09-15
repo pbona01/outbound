@@ -36,46 +36,100 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const user = session?.user ?? null;
 
   useEffect(() => {
-    if (!user) {
-      setProfile(null);
-      return;
-    }
-    const fallbackProfile: UserProfile = {
-      id: user.id,
-      email: user.email || '',
-      full_name: user.user_metadata?.full_name || '',
-      role: user.user_metadata?.role || 'Operator',
-      onboarding_completed: Boolean(user.user_metadata?.onboarding_completed),
-    };
-    setProfile(fallbackProfile);
-
-    if (supabase) {
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setProfile((prev) => ({ ...prev, ...data }));
-          }
-        });
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!supabase) return;
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) {
-        setSession(data.session);
+
+    const initAuth = async () => {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setSession(currentSession);
+
+        if (currentSession?.user) {
+          const { data: dbProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', currentSession.user.id)
+            .maybeSingle();
+
+          if (mounted) {
+            if (dbProfile) {
+              setProfile({
+                id: currentSession.user.id,
+                email: currentSession.user.email || '',
+                full_name: dbProfile.full_name || currentSession.user.user_metadata?.full_name || '',
+                role: dbProfile.role || currentSession.user.user_metadata?.role || 'Operator',
+                onboarding_completed: Boolean(dbProfile.onboarding_completed),
+              });
+            } else {
+              setProfile({
+                id: currentSession.user.id,
+                email: currentSession.user.email || '',
+                full_name: currentSession.user.user_metadata?.full_name || '',
+                role: currentSession.user.user_metadata?.role || 'Operator',
+                onboarding_completed: Boolean(currentSession.user.user_metadata?.onboarding_completed),
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error during initAuth:', err);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initAuth();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+      if (!mounted) return;
+      setSession(nextSession);
+      if (nextSession?.user) {
+        setLoading(true);
+        try {
+          const { data: dbProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', nextSession.user.id)
+            .maybeSingle();
+
+          if (mounted) {
+            if (dbProfile) {
+              setProfile({
+                id: nextSession.user.id,
+                email: nextSession.user.email || '',
+                full_name: dbProfile.full_name || nextSession.user.user_metadata?.full_name || '',
+                role: dbProfile.role || nextSession.user.user_metadata?.role || 'Operator',
+                onboarding_completed: Boolean(dbProfile.onboarding_completed),
+              });
+            } else {
+              setProfile({
+                id: nextSession.user.id,
+                email: nextSession.user.email || '',
+                full_name: nextSession.user.user_metadata?.full_name || '',
+                role: nextSession.user.user_metadata?.role || 'Operator',
+                onboarding_completed: Boolean(nextSession.user.user_metadata?.onboarding_completed),
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Error during authStateChange profile fetch:', err);
+        } finally {
+          if (mounted) {
+            setLoading(false);
+          }
+        }
+      } else {
+        setProfile(null);
         setLoading(false);
       }
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setLoading(false);
-    });
+
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
@@ -102,6 +156,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     signOut: async () => {
       if (!supabase) return;
+      localStorage.removeItem('outbound_workspace_id');
+      localStorage.removeItem('outbound_workspace_name');
+      setProfile(null);
+      setSession(null);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     },
@@ -113,7 +171,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshProfile: async () => {
       if (!supabase || !user) return;
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-      if (data) setProfile((prev) => ({ ...prev, ...data }));
+      if (data) {
+        setProfile({
+          id: user.id,
+          email: user.email || '',
+          full_name: data.full_name || user.user_metadata?.full_name || '',
+          role: data.role || user.user_metadata?.role || 'Operator',
+          onboarding_completed: Boolean(data.onboarding_completed),
+        });
+      }
     },
   }), [loading, session, profile, user]);
 

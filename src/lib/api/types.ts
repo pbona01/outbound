@@ -17,7 +17,7 @@ export interface ApiClient {
   // Campaigns
   getCampaigns(): Promise<Campaign[]>;
   getCampaign(id: string): Promise<Campaign>;
-  createCampaign(data: Partial<Campaign>): Promise<Campaign>;
+  createCampaign(data: Partial<Campaign>, prospects?: Prospect[]): Promise<Campaign>;
   updateCampaign(id: string, updates: Partial<Campaign>): Promise<Campaign>;
 
   // Prospects

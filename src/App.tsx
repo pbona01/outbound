@@ -34,19 +34,20 @@ function RootRoute() {
 }
 
 function OnboardingRoute() {
-  const { user, configured } = useAuth();
+  const { user, profile, loading, configured, refreshProfile } = useAuth();
   const { workspace, workspaces, isLoading: isWorkspaceLoading, createWorkspace, refreshWorkspaces } = useWorkspace();
   const navigate = useNavigate();
 
+  if (loading || isWorkspaceLoading) return <AuthLoading />;
   if (!configured) return <Navigate to="/" replace />;
   if (!user) return <Navigate to="/signin" replace />;
   
-  // Idempotency: If the user already has an active workspace, route directly to the dashboard
-  if (!isWorkspaceLoading && (workspace || workspaces.length > 0)) {
+  // Idempotency: If the user already has completed onboarding or has a workspace, route directly to dashboard
+  if (profile?.onboarding_completed || workspace || workspaces.length > 0) {
     return <Navigate to="/" replace />;
   }
 
-  const complete = async (profile: OnboardingProfile) => {
+  const complete = async (onboardingData: OnboardingProfile) => {
     if (!supabase) return;
 
     // Check if user already owns or belongs to a workspace (double-check race conditions)
@@ -56,36 +57,56 @@ function OnboardingRoute() {
       .eq('user_id', user.id)
       .limit(1);
 
+    let activeWorkspaceId = '';
+    let activeWorkspaceName = '';
+
     if (existingMemberships && existingMemberships.length > 0) {
-      await supabase.from('profiles').upsert({
-        id: user.id,
-        email: user.email,
-        full_name: user.user_metadata?.full_name || '',
-        role: profile.role,
-        onboarding_completed: true,
+      activeWorkspaceId = existingMemberships[0].workspace_id;
+      // Fetch workspace details
+      const { data: wsData } = await supabase
+        .from('workspaces')
+        .select('name')
+        .eq('id', activeWorkspaceId)
+        .maybeSingle();
+      if (wsData) {
+        activeWorkspaceName = wsData.name;
+      }
+    } else {
+      // Create new workspace and member link
+      const dbWs = await createWorkspace({
+        name: onboardingData.workspaceName,
+        industry: onboardingData.industry,
+        geography: onboardingData.geography,
+        company_size: onboardingData.companySize,
+        offer: onboardingData.offer,
+        mailbox_provider: onboardingData.mailboxProvider,
       });
-      await refreshWorkspaces();
-      navigate('/', { replace: true });
-      return;
+      if (dbWs) {
+        activeWorkspaceId = dbWs.id;
+        activeWorkspaceName = dbWs.name;
+      }
     }
 
-    // Create new workspace and member link
-    await createWorkspace({
-      name: profile.workspaceName,
-      industry: profile.industry,
-      geography: profile.geography,
-      company_size: profile.companySize,
-      offer: profile.offer,
-      mailbox_provider: profile.mailboxProvider,
-    });
+    if (activeWorkspaceId) {
+      localStorage.setItem('outbound_workspace_id', activeWorkspaceId);
+      if (activeWorkspaceName) {
+        localStorage.setItem('outbound_workspace_name', activeWorkspaceName);
+      }
+    }
 
     await supabase.from('profiles').upsert({
       id: user.id,
       email: user.email,
       full_name: user.user_metadata?.full_name || '',
-      role: profile.role,
+      role: onboardingData.role,
       onboarding_completed: true,
+      updated_at: new Date().toISOString(),
     });
+
+    await refreshWorkspaces();
+    if (refreshProfile) {
+      await refreshProfile();
+    }
 
     navigate('/', { replace: true });
   };

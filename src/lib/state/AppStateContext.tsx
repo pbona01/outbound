@@ -200,8 +200,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return newProspect;
   };
 
-  const addCampaign = async (campaign: Partial<Campaign>) => {
-    const newCampaign = await api.createCampaign(campaign);
+  const addCampaign = async (campaign: Partial<Campaign>, prospects?: Prospect[]) => {
+    const newCampaign = await api.createCampaign(campaign, prospects);
     await Promise.all([refreshCampaigns(), refreshProspects()]);
     return newCampaign;
   };

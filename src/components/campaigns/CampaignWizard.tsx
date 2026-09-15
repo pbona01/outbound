@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   ArrowLeft,
@@ -19,7 +20,7 @@ import { useAppState } from '../../lib/state/AppStateContext';
 interface CampaignWizardProps {
   isOpen: boolean;
   onClose: () => void;
-  onLaunchCampaign: (campaign: Partial<Campaign>) => Promise<Campaign | void>;
+  onLaunchCampaign: (campaign: Partial<Campaign>, prospects?: Prospect[]) => Promise<Campaign | void>;
   onShowToast: (title: string, description?: string, type?: 'success' | 'info' | 'error') => void;
 }
 
@@ -29,6 +30,7 @@ export function CampaignWizard({
   onLaunchCampaign,
   onShowToast,
 }: CampaignWizardProps) {
+  const navigate = useNavigate();
   const { profile, user } = useAuth();
   const { workspace } = useWorkspace();
   const { discoverProspects, sequences, createSequence } = useAppState();
@@ -167,7 +169,9 @@ export function CampaignWizard({
         }
       }
 
-      await onLaunchCampaign({
+      const selectedProspects = discoveredProspects.filter((p) => selectedDiscoveredIds.has(p.id));
+
+      const launched = await onLaunchCampaign({
         name: campaignName.trim(),
         audienceQuery: naturalQuery.trim(),
         targetIndustry: targetIndustry.trim(),
@@ -184,13 +188,17 @@ export function CampaignWizard({
           positiveReplies: 0,
           meetings: 0,
         },
-      });
+      }, selectedProspects);
 
       onShowToast(
         status === 'active' ? 'Campaign Launched' : 'Draft Saved',
         `"${campaignName}" created successfully.`
       );
       onClose();
+
+      if (launched && launched.id) {
+        navigate(`/campaigns/${launched.id}`);
+      }
     } catch (err: any) {
       onShowToast('Error', err.message || 'Failed to create campaign in Supabase', 'error');
     } finally {

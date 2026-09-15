@@ -25,7 +25,7 @@ export class MockApiClient implements ApiClient {
     return c;
   }
 
-  async createCampaign(data: Partial<Campaign>): Promise<Campaign> {
+  async createCampaign(data: Partial<Campaign>, prospects?: Prospect[]): Promise<Campaign> {
     await delay(500);
     const state = this.data;
     const newCampaignId = `camp-${Date.now()}`;

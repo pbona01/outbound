@@ -157,6 +157,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setWorkspace(mockWs);
       setWorkspaces((prev) => [mockWs, ...prev]);
       localStorage.setItem('outbound_workspace_id', mockWs.id);
+      localStorage.setItem('outbound_workspace_name', mockWs.name);
       localStorage.setItem('outbound_workspace_data', JSON.stringify(mockWs));
       return mockWs;
     }
@@ -196,6 +197,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setWorkspace(dbWs);
         setWorkspaces((prev) => [dbWs, ...prev]);
         localStorage.setItem('outbound_workspace_id', dbWs.id);
+        localStorage.setItem('outbound_workspace_name', dbWs.name);
         return dbWs;
       }
       return null;

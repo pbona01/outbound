@@ -176,7 +176,7 @@ export class SupabaseApiClient implements ApiClient {
     };
   }
 
-  async createCampaign(campaign: Partial<Campaign>): Promise<Campaign> {
+  async createCampaign(campaign: Partial<Campaign>, prospects?: Prospect[]): Promise<Campaign> {
     if (!supabase) throw new Error('Supabase client not initialized');
     const wsId = this.getWorkspaceId();
     const newCamp = {
@@ -197,7 +197,56 @@ export class SupabaseApiClient implements ApiClient {
       throw new Error(`Failed to create campaign: ${error?.message || 'Database error'}`);
     }
 
-    return this.getCampaign(data.id);
+    const campaignId = data.id;
+
+    if (prospects && prospects.length > 0) {
+      const dbProspects = prospects.map((p) => {
+        const contactEmail = p.contact?.email || '';
+        return {
+          workspace_id: wsId,
+          campaign_id: campaignId,
+          company_name: p.company?.name || 'Target Account',
+          domain: p.company?.domain || '',
+          contact_name: p.contact?.fullName || 'Contact',
+          contact_role: p.contact?.role || 'Executive',
+          contact_email: contactEmail || null,
+          verified: Boolean(p.contact?.emailVerified || contactEmail.includes('@')),
+          fit_score: p.fitScore || 75,
+          status: 'in_sequence',
+          primary_problem: p.primaryProblem || 'Website conversion friction',
+          evidence: p.company?.description || p.research?.summary || 'Discovered during campaign creation',
+          source: (p as any).source || 'Discovery Engine',
+          source_url: p.company?.websiteUrl || (p.company?.domain ? `https://${p.company.domain}` : ''),
+          discovered_at: p.createdAt || new Date().toISOString(),
+        };
+      });
+
+      const { error: insertError } = await supabase.from('prospects').insert(dbProspects);
+      if (insertError) {
+        console.error('Failed to enroll discovered prospects:', insertError.message);
+      } else {
+        // Update stats on the campaign
+        const { count } = await supabase
+          .from('prospects')
+          .select('*', { count: 'exact', head: true })
+          .eq('workspace_id', wsId)
+          .eq('campaign_id', campaignId);
+        
+        if (count !== null && count > 0) {
+          await supabase
+            .from('campaigns')
+            .update({
+              stats: {
+                ...newCamp.stats,
+                prospects: count,
+              }
+            })
+            .eq('id', campaignId);
+        }
+      }
+    }
+
+    return this.getCampaign(campaignId);
   }
 
   async updateCampaign(id: string, updates: Partial<Campaign>): Promise<Campaign> {
@@ -751,7 +800,86 @@ export class SupabaseApiClient implements ApiClient {
 
       const data = await res.json();
       if (!data.prospects || !Array.isArray(data.prospects)) return [];
-      return data.prospects.map((p: any) => this.mapDbProspectToProspect(p));
+      
+      // Map API response to Prospect type shape
+      return data.prospects.map((p: any) => {
+        return {
+          id: p.id || `disc-${Date.now()}-${Math.random()}`,
+          companyId: p.companyId || `comp-${p.id}`,
+          company: {
+            id: p.company?.id || `comp-${p.id}`,
+            name: p.company?.name || 'Target Account',
+            domain: p.company?.domain || '',
+            industry: p.company?.industry || criteria.industry || 'Business Services',
+            location: p.company?.location || criteria.geography || 'United States',
+            city: p.company?.city || '',
+            state: p.company?.state || '',
+            country: p.company?.country || 'USA',
+            employeeCount: p.company?.employeeCount || '10-50',
+            websiteUrl: p.company?.websiteUrl || (p.company?.domain ? `https://${p.company.domain}` : ''),
+            websiteQualityScore: p.company?.websiteQualityScore || p.fitScore || 70,
+            description: p.company?.description || p.evidence || 'Target prospect account',
+          },
+          contact: {
+            id: p.contact?.id || `cnt-${p.id}`,
+            fullName: p.contact?.fullName || 'Prospect Contact',
+            firstName: p.contact?.firstName || (p.contact?.fullName || 'Prospect').split(' ')[0],
+            lastName: p.contact?.lastName || (p.contact?.fullName || '').split(' ').slice(1).join(' ') || '',
+            role: p.contact?.role || 'Decision Maker',
+            email: p.contact?.email || '',
+            emailVerified: Boolean(p.contact?.emailVerified || p.contact?.email?.includes('@')),
+          },
+          fitScore: p.fitScore || 70,
+          fitScoreBreakdown: p.fitScoreBreakdown || {
+            businessRelevance: 20,
+            commercialValue: 15,
+            websiteOpportunity: 15,
+            activity: 10,
+            contactability: 5,
+            digitalPresence: 5,
+          },
+          fitLabel: p.fitScore >= 85 ? 'Excellent fit' : p.fitScore >= 75 ? 'Strong fit' : 'Moderate fit',
+          primaryProblem: p.primaryProblem || 'Website conversion friction',
+          status: 'ready',
+          campaignId: p.campaignId,
+          research: p.research || {
+            summary: p.evidence || 'Analyzed target website and domain signals.',
+            whyTheyFit: ['Matches ICP criteria'],
+            websiteOpportunities: [
+              {
+                id: 'opp-1',
+                issue: p.primaryProblem || 'Conversion friction',
+                detail: p.evidence || 'Audit highlights optimization potential.',
+                sourceUrl: p.sourceUrl || (p.company?.domain ? `https://${p.company.domain}` : ''),
+              },
+            ],
+            techStack: [],
+            recentSignals: [],
+            suggestedAngle: 'Focus on clear conversion improvements.',
+          },
+          generatedEmail: p.generatedEmail || {
+            subject: `Quick idea for ${p.company?.name || 'your team'}`,
+            body: `Hi ${p.contact?.firstName || (p.contact?.fullName || '').split(' ')[0] || 'there'},\n\nNoticed ${p.company?.name || 'your company'} is growing. Thought of a quick way to improve conversions.\n\nBest,\n[Your Name]`,
+            personalizations: [
+              {
+                text: p.evidence || 'Site audit',
+                source: 'Website Audit',
+                explanation: 'Detected optimization opportunity',
+              },
+            ],
+            charCount: 140,
+          },
+          activities: [
+            {
+              id: `act-${p.id}`,
+              type: 'discovered' as const,
+              title: 'Prospect Discovered',
+              timestamp: p.discoveredAt || new Date().toISOString(),
+            },
+          ],
+          createdAt: p.discoveredAt || new Date().toISOString(),
+        };
+      });
     } catch (err: any) {
       const error: any = new Error('Discovery provider not connected. Live commercial registry discovery requires an active backend provider.');
       error.code = 'PROVIDER_UNAVAILABLE';
