@@ -14,11 +14,21 @@
 
   body {
     background-color: #F7F7F5;
+    background-image: radial-gradient(circle at 15% -10%, rgba(49, 87, 255, 0.07), transparent 28rem), radial-gradient(circle at 90% 0%, rgba(245, 158, 11, 0.05), transparent 24rem);
     color: #111111;
     font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.011em;
+  }
+
+  button, input, textarea, select {
+    font: inherit;
+  }
+
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: 3px solid rgba(49, 87, 255, 0.22);
+    outline-offset: 2px;
   }
 }
 

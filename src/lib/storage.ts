@@ -1,49 +1,20 @@
-import { Campaign, Prospect, InboxThread, NeedsAttentionItem, Sequence } from '../types';
-import { mockCampaigns, mockProspects, mockInboxThreads, mockNeedsAttention } from '../data/mockData';
+export function loadStored<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
 
-const STORAGE_KEY = 'outboundos_state_v1';
-
-export interface AppStorageData {
-  campaigns: Campaign[];
-  prospects: Prospect[];
-  inboxThreads: InboxThread[];
-  needsAttention: NeedsAttentionItem[];
-  sequences: Sequence[];
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-export const storage = {
-  get: (): AppStorageData => {
-    try {
-      const data = localStorage.getItem(STORAGE_KEY);
-      if (data) {
-        return JSON.parse(data);
-      }
-    } catch (error) {
-      console.warn('Could not read from localStorage', error);
-    }
-    // Return mock data as default
-    return {
-      campaigns: [...mockCampaigns],
-      prospects: [...mockProspects],
-      inboxThreads: [...mockInboxThreads],
-      needsAttention: [...mockNeedsAttention],
-      sequences: [],
-    };
-  },
-  
-  set: (data: AppStorageData) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (error) {
-      console.warn('Could not write to localStorage', error);
-    }
-  },
+export function saveStored<T>(key: string, value: T): void {
+  if (typeof window === 'undefined') return;
 
-  clear: () => {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch (error) {
-      console.warn('Could not clear localStorage', error);
-    }
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Storage can be unavailable in private browsing or embedded previews.
   }
-};
+}
