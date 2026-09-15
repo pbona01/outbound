@@ -56,10 +56,7 @@ export function OverviewView() {
   // Build points purely from real data
   const chartPoints = hasRealActivity
     ? [
-        { label: 'Day 1', sent: 0, replies: 0, positive: 0, meetings: 0 },
-        { label: 'Day 3', sent: Math.round(totalSent * 0.2), replies: Math.round(totalReplies * 0.1), positive: 0, meetings: 0 },
-        { label: 'Day 5', sent: Math.round(totalSent * 0.6), replies: Math.round(totalReplies * 0.5), positive: Math.round(totalPositive * 0.4), meetings: 0 },
-        { label: 'Day 7', sent: Math.round(totalSent * 0.9), replies: Math.round(totalReplies * 0.8), positive: Math.round(totalPositive * 0.8), meetings: totalMeetings },
+        { label: 'Start', sent: 0, replies: 0, positive: 0, meetings: 0 },
         { label: 'Today', sent: totalSent, replies: totalReplies, positive: totalPositive, meetings: totalMeetings },
       ]
     : [];

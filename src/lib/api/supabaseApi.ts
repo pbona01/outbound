@@ -179,6 +179,19 @@ export class SupabaseApiClient implements ApiClient {
   async createCampaign(campaign: Partial<Campaign>, prospects?: Prospect[]): Promise<Campaign> {
     if (!supabase) throw new Error('Supabase client not initialized');
     const wsId = this.getWorkspaceId();
+
+    if (campaign.status === 'active') {
+      const { data: connectedMailboxes, error: mbError } = await supabase
+        .from('mailboxes')
+        .select('id')
+        .eq('workspace_id', wsId)
+        .eq('status', 'connected');
+      
+      if (mbError || !connectedMailboxes || connectedMailboxes.length === 0) {
+        throw new Error('Active campaigns cannot be created without a connected sending mailbox. Please save as a draft or connect your Gmail first under Integrations.');
+      }
+    }
+
     const newCamp = {
       workspace_id: wsId,
       name: campaign.name || 'New Campaign',
@@ -252,6 +265,19 @@ export class SupabaseApiClient implements ApiClient {
   async updateCampaign(id: string, updates: Partial<Campaign>): Promise<Campaign> {
     if (!supabase) throw new Error('Supabase client not initialized');
     const wsId = this.getWorkspaceId();
+
+    if (updates.status === 'active') {
+      const { data: connectedMailboxes, error: mbError } = await supabase
+        .from('mailboxes')
+        .select('id')
+        .eq('workspace_id', wsId)
+        .eq('status', 'connected');
+      
+      if (mbError || !connectedMailboxes || connectedMailboxes.length === 0) {
+        throw new Error('Active campaigns cannot be started without a connected sending mailbox. Please go to Integrations to connect your Gmail.');
+      }
+    }
+
     const payload: any = { updated_at: new Date().toISOString() };
     if (updates.name !== undefined) payload.name = updates.name;
     if (updates.status !== undefined) payload.status = updates.status;

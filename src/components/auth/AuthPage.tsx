@@ -33,7 +33,8 @@ export function AuthPage({ mode }: { mode: Mode }) {
         navigate('/onboarding');
       } else {
         await signIn(email, password);
-        navigate('/');
+        const from = location.state?.from || '/';
+        navigate(from, { replace: true });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');

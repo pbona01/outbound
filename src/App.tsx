@@ -25,11 +25,26 @@ function AuthLoading() {
 }
 
 function RootRoute() {
-  const { user, loading, configured } = useAuth();
+  const { user, profile, loading, configured } = useAuth();
+  const { workspace, workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
   const location = useLocation();
+
   if (!configured) return <AppLayout />;
-  if (loading) return <AuthLoading />;
-  if (!user) return location.pathname === '/' ? <LandingPage /> : <Navigate to="/signin" replace />;
+  if (loading || isWorkspaceLoading) return <AuthLoading />;
+
+  if (!user) {
+    if (location.pathname === '/') {
+      return <LandingPage />;
+    }
+    return <Navigate to="/signin" state={{ from: location }} replace />;
+  }
+
+  // User is authenticated. Check if onboarding is completed.
+  const onboardingCompleted = profile?.onboarding_completed || workspace || workspaces.length > 0;
+  if (!onboardingCompleted) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   return <AppLayout />;
 }
 
