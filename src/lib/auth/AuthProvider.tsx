@@ -74,9 +74,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!configured) {
-      if (import.meta.env.VITE_USE_MOCK_API === 'true') {
-        setProfile(DEV_MOCK_USER);
-      } else {
+      try {
+        const storedMock = localStorage.getItem('outbound_mock_session');
+        if (storedMock) {
+          setProfile(JSON.parse(storedMock));
+        } else {
+          setProfile(null);
+        }
+      } catch {
         setProfile(null);
       }
       setIsLoading(false);
@@ -112,18 +117,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password?: string) => {
     if (!configured) {
-      if (import.meta.env.VITE_USE_MOCK_API === 'true') {
-        const mockProf: UserProfile = {
-          id: `usr-${Date.now()}`,
-          email,
-          full_name: email.split('@')[0],
-          role: 'Owner',
-          onboarding_completed: true,
-        };
-        setProfile(mockProf);
-        return { error: null };
-      }
-      return { error: new Error('Supabase is not configured.') };
+      const mockProf: UserProfile = {
+        id: `usr-${Date.now()}`,
+        email,
+        full_name: email.split('@')[0],
+        role: 'Owner',
+        onboarding_completed: true,
+      };
+      localStorage.setItem('outbound_mock_session', JSON.stringify(mockProf));
+      setProfile(mockProf);
+      return { error: null };
     }
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -147,18 +150,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password?: string, fullName?: string) => {
     if (!configured) {
-      if (import.meta.env.VITE_USE_MOCK_API === 'true') {
-        const mockProf: UserProfile = {
-          id: `usr-${Date.now()}`,
-          email,
-          full_name: fullName || email.split('@')[0],
-          role: 'Owner',
-          onboarding_completed: false,
-        };
-        setProfile(mockProf);
-        return { error: null };
-      }
-      return { error: new Error('Supabase is not configured.') };
+      const mockProf: UserProfile = {
+        id: `usr-${Date.now()}`,
+        email,
+        full_name: fullName || email.split('@')[0],
+        role: 'Owner',
+        onboarding_completed: false,
+      };
+      localStorage.setItem('outbound_mock_session', JSON.stringify(mockProf));
+      setProfile(mockProf);
+      return { error: null };
     }
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -179,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (configured) {
       await supabase.auth.signOut();
     }
+    localStorage.removeItem('outbound_mock_session');
     setUser(null);
     setSession(null);
     setProfile(null);
@@ -187,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resetPassword = async (email: string) => {
     if (!configured) return { error: null };
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: `${window.location.origin}/signin`,
     });
     return { error };
   };
@@ -199,6 +201,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const merged = { ...profile, ...updates, updated_at: new Date().toISOString() };
     setProfile(merged as UserProfile);
+    if (!configured) {
+      localStorage.setItem('outbound_mock_session', JSON.stringify(merged));
+    }
 
     if (configured && user) {
       const { error } = await supabase

@@ -55,10 +55,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     if (!configured) {
-      if (import.meta.env.VITE_USE_MOCK_API === 'true') {
-        setWorkspace(MOCK_FALLBACK_WORKSPACE);
-        setWorkspaces([MOCK_FALLBACK_WORKSPACE]);
-      } else {
+      try {
+        const storedWs = localStorage.getItem('outbound_workspace_data');
+        if (storedWs) {
+          const parsed = JSON.parse(storedWs);
+          setWorkspace(parsed);
+          setWorkspaces([parsed]);
+        } else {
+          setWorkspace(null);
+          setWorkspaces([]);
+        }
+      } catch {
         setWorkspace(null);
         setWorkspaces([]);
       }
@@ -117,6 +124,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (!workspace) return null;
     const updated = { ...workspace, ...updates, updated_at: new Date().toISOString() };
     setWorkspace(updated);
+    if (!configured) {
+      localStorage.setItem('outbound_workspace_data', JSON.stringify(updated));
+    }
 
     if (configured) {
       const { error: err } = await supabase.from('workspaces').update(updates).eq('id', workspace.id);
@@ -126,25 +136,23 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   };
 
   const createWorkspace = async (data: Partial<Workspace>): Promise<Workspace | null> => {
-    if (!user) {
-      if (import.meta.env.VITE_USE_MOCK_API === 'true') {
-        const mockWs: Workspace = {
-          id: `ws-${Date.now()}`,
-          name: data.name || 'My Workspace',
-          slug: data.slug || `ws-${Date.now()}`,
-          industry: data.industry || '',
-          geography: data.geography || '',
-          company_size: data.company_size || '5-50 employees',
-          offer: data.offer || '',
-          mailbox_provider: data.mailbox_provider || 'Set up later',
-          created_at: new Date().toISOString(),
-        };
-        setWorkspace(mockWs);
-        setWorkspaces((prev) => [mockWs, ...prev]);
-        localStorage.setItem('outbound_workspace_id', mockWs.id);
-        return mockWs;
-      }
-      throw new Error('You must be signed in to create a workspace.');
+    if (!configured || !user) {
+      const mockWs: Workspace = {
+        id: `ws-${Date.now()}`,
+        name: data.name || 'My Workspace',
+        slug: data.slug || `ws-${Date.now()}`,
+        industry: data.industry || '',
+        geography: data.geography || '',
+        company_size: data.company_size || '5-50 employees',
+        offer: data.offer || '',
+        mailbox_provider: data.mailbox_provider || 'Set up later',
+        created_at: new Date().toISOString(),
+      };
+      setWorkspace(mockWs);
+      setWorkspaces((prev) => [mockWs, ...prev]);
+      localStorage.setItem('outbound_workspace_id', mockWs.id);
+      localStorage.setItem('outbound_workspace_data', JSON.stringify(mockWs));
+      return mockWs;
     }
 
     try {

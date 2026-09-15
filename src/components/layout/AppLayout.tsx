@@ -55,6 +55,21 @@ export function AppLayout() {
   const displayEmail = profile?.email || user?.email || '';
   const workspaceName = workspace?.name || 'My Workspace';
 
+  const getNavPath = (id: string) => {
+    const isAppPrefix = location.pathname.startsWith('/app');
+    const base = isAppPrefix ? '/app' : '';
+    if (!id) return base || '/';
+    return `${base}/${id}`;
+  };
+
+  const isNavActive = (id: string) => {
+    const current = location.pathname;
+    if (!id) {
+      return current === '/' || current === '/app' || current === '/overview' || current === '/app/overview';
+    }
+    return current.startsWith(`/app/${id}`) || current.startsWith(`/${id}`);
+  };
+
   const navItems = [
     { id: '', label: 'Overview', icon: LayoutDashboard },
     { id: 'campaigns', label: 'Campaigns', icon: Layers, badge: campaigns.length },
@@ -123,8 +138,8 @@ export function AppLayout() {
           {/* Navigation Items */}
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
-              const toPath = `/${item.id}`;
-              const isActive = location.pathname === toPath || (item.id !== '' && location.pathname.startsWith(`/${item.id}`));
+              const toPath = getNavPath(item.id);
+              const isActive = isNavActive(item.id);
               const Icon = item.icon;
               return (
                 <NavLink
@@ -221,8 +236,8 @@ export function AppLayout() {
 
               <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
                 {navItems.map((item) => {
-                  const toPath = `/${item.id}`;
-                  const isActive = location.pathname === toPath || (item.id !== '' && location.pathname.startsWith(`/${item.id}`));
+                  const toPath = getNavPath(item.id);
+                  const isActive = isNavActive(item.id);
                   const Icon = item.icon;
                   return (
                     <NavLink

@@ -23,12 +23,12 @@ export const storage = {
     } catch (error) {
       console.warn('Could not read from localStorage', error);
     }
-    // Return mock data as default
+    // Return empty state by default for clean new user experience
     return {
-      campaigns: [...mockCampaigns],
-      prospects: [...mockProspects],
-      inboxThreads: [...mockInboxThreads],
-      needsAttention: [...mockNeedsAttention],
+      campaigns: [],
+      prospects: [],
+      inboxThreads: [],
+      needsAttention: [],
       sequences: [],
     };
   },

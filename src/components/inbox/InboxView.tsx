@@ -362,7 +362,9 @@ export function InboxView() {
                     className="w-full p-3 rounded-xl border border-black/[0.08] bg-white text-[13px] text-[#111111] focus:outline-none focus:border-[#3157FF] focus:ring-1 focus:ring-[#3157FF] transition-all resize-none"
                   />
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-[#949494]">Sends from: alex@growthstudio.co</span>
+                    <span className="text-[11px] text-[#949494]">
+                      Sends from: {profile?.email || user?.email || 'Connected mailbox'}
+                    </span>
                     <button
                       onClick={handleSendReply}
                       disabled={!replyText.trim() || isSending}
