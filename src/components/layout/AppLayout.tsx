@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Layers,
@@ -29,10 +29,17 @@ import { ProspectDrawer } from '../prospects/ProspectDrawer';
 
 export function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { campaigns, prospects, inboxThreads, updateProspectStatus, addCampaign } = useAppState();
   const { showToast } = useToast();
   const { profile, user, signOut } = useAuth();
   const { workspace, workspaces, switchWorkspace } = useWorkspace();
+
+  const handleSignOut = async () => {
+    await signOut();
+    showToast('Signed Out', 'You have been signed out.');
+    navigate('/login', { replace: true });
+  };
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -181,10 +188,7 @@ export function AppLayout() {
             </div>
 
             <button
-              onClick={() => {
-                signOut();
-                showToast('Signed Out', 'You have been signed out.');
-              }}
+              onClick={handleSignOut}
               className="p-1.5 rounded-lg text-stone-400 hover:text-red-600 hover:bg-stone-100 transition"
               title="Sign Out"
             >
@@ -243,6 +247,34 @@ export function AppLayout() {
                   );
                 })}
               </nav>
+
+              {/* Mobile User Profile Bar */}
+              <div className="p-3 border-t border-black/[0.06] flex items-center justify-between bg-stone-50">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center text-xs font-semibold text-stone-700 shrink-0 uppercase">
+                    {displayName.slice(0, 2)}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-semibold text-[13px] text-[#111111] truncate block leading-tight">
+                      {displayName}
+                    </span>
+                    <span className="text-[11px] text-[#949494] truncate block font-mono">
+                      {displayEmail}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setIsMobileSidebarOpen(false);
+                    handleSignOut();
+                  }}
+                  className="p-2 rounded-lg text-stone-500 hover:text-red-600 hover:bg-stone-200 transition"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}

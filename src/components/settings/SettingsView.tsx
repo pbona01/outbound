@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -6,6 +7,7 @@ import {
   Building,
   Mail,
   Plus,
+  LogOut,
 } from 'lucide-react';
 import { useToast } from "../../lib/state/ToastContext";
 import { useAppState } from "../../lib/state/AppStateContext";
@@ -14,8 +16,9 @@ import { useWorkspace } from "../../lib/workspaces/WorkspaceProvider";
 
 export function SettingsView() {
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const { resetStorage, prospects, campaigns } = useAppState();
-  const { user, profile } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { workspace, updateWorkspace } = useWorkspace();
 
   const [wsName, setWsName] = useState(workspace?.name || 'My Workspace');
@@ -61,7 +64,20 @@ export function SettingsView() {
 
       {/* Account Profile Card */}
       <div className="p-6 bg-white rounded-2xl border border-black/[0.07] shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-4">
-        <h3 className="text-[16px] font-semibold text-[#111111]">User Account</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-[16px] font-semibold text-[#111111]">User Account</h3>
+          <button
+            onClick={async () => {
+              await signOut();
+              showToast('Signed Out', 'You have been signed out.');
+              navigate('/login', { replace: true });
+            }}
+            className="px-3 py-1.5 rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-xs font-medium flex items-center gap-1.5 transition"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Sign Out
+          </button>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
             <label className="text-[#686868] block mb-1 font-medium">Full Name</label>
@@ -72,7 +88,7 @@ export function SettingsView() {
           <div>
             <label className="text-[#686868] block mb-1 font-medium">Email Address</label>
             <div className="px-3 py-2 bg-[#f9f9f8] border border-black/10 rounded-xl font-mono text-[#111]">
-              {user?.email || 'user@company.com'}
+              {profile?.email || user?.email || 'user@company.com'}
             </div>
           </div>
         </div>

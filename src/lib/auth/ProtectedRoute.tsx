@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading, isConfigured } = useAuth();
+  const { user, profile, isLoading, isConfigured } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -22,8 +22,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // If Supabase is configured and there's no session user, redirect to login
-  if (isConfigured && !user) {
+  // If there's no authenticated user or profile, redirect to login
+  const isAuthenticated = isConfigured ? Boolean(user) : Boolean(profile);
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
