@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name TEXT,
   avatar_url TEXT,
   role TEXT DEFAULT 'Member',
+  onboarding_completed BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -16,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 CREATE TABLE IF NOT EXISTS public.workspaces (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
-  slug TEXT UNIQUE,
+  slug TEXT UNIQUE NOT NULL,
   owner_id UUID REFERENCES public.profiles(id),
   industry TEXT,
   geography TEXT,
@@ -30,12 +31,11 @@ CREATE TABLE IF NOT EXISTS public.workspaces (
 
 -- 3. Workspace Members Table
 CREATE TABLE IF NOT EXISTS public.workspace_members (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE NOT NULL,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   role TEXT CHECK (role IN ('owner', 'admin', 'member', 'viewer')) DEFAULT 'member',
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(workspace_id, user_id)
+  PRIMARY KEY (workspace_id, user_id)
 );
 
 -- 4. Campaigns Table
@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS public.companies (
   source_url TEXT,
   tech_stack TEXT[] DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unique_workspace_domain UNIQUE (workspace_id, domain)
 );
 
 -- 6. Contacts Table
@@ -166,7 +167,23 @@ CREATE TABLE IF NOT EXISTS public.sequence_steps (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 11. Inbox Threads Table
+-- 11. Mailboxes Table (Server side only for token storage)
+CREATE TABLE IF NOT EXISTS public.mailboxes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE NOT NULL,
+  provider TEXT NOT NULL DEFAULT 'google',
+  email TEXT NOT NULL,
+  status TEXT CHECK (status IN ('connected', 'disconnected', 'error', 'pending')) DEFAULT 'pending',
+  display_name TEXT,
+  daily_limit INT DEFAULT 50,
+  last_sync_at TIMESTAMPTZ,
+  health_score INT DEFAULT 100,
+  encrypted_refresh_token TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 12. Inbox Threads Table
 CREATE TABLE IF NOT EXISTS public.inbox_threads (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE NOT NULL,
@@ -180,7 +197,7 @@ CREATE TABLE IF NOT EXISTS public.inbox_threads (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 12. Email Messages Table (Drafts & Sent History)
+-- 13. Email Messages Table (Drafts & Sent History)
 CREATE TABLE IF NOT EXISTS public.email_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE NOT NULL,
@@ -198,7 +215,7 @@ CREATE TABLE IF NOT EXISTS public.email_messages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 13. Suppression List Table
+-- 14. Suppression List Table
 CREATE TABLE IF NOT EXISTS public.suppression_list (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE NOT NULL,
@@ -209,7 +226,7 @@ CREATE TABLE IF NOT EXISTS public.suppression_list (
   CONSTRAINT unique_workspace_suppression_email UNIQUE (workspace_id, email)
 );
 
--- 14. Scheduled Jobs Table
+-- 15. Scheduled Jobs Table
 CREATE TABLE IF NOT EXISTS public.scheduled_jobs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE NOT NULL,
@@ -225,7 +242,7 @@ CREATE TABLE IF NOT EXISTS public.scheduled_jobs (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 15. Analytics Events Table
+-- 16. Analytics Events Table
 CREATE TABLE IF NOT EXISTS public.analytics_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE NOT NULL,
@@ -235,6 +252,25 @@ CREATE TABLE IF NOT EXISTS public.analytics_events (
   metadata JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 17. Usage Events Table
+CREATE TABLE IF NOT EXISTS public.usage_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  event_type TEXT NOT NULL,
+  quantity INT DEFAULT 1,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_campaigns_workspace ON public.campaigns(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_prospects_workspace ON public.prospects(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_prospects_campaign ON public.prospects(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_email ON public.contacts(email);
+CREATE INDEX IF NOT EXISTS idx_scheduled_jobs_scheduled_for ON public.scheduled_jobs(scheduled_for, status);
+CREATE INDEX IF NOT EXISTS idx_analytics_workspace ON public.analytics_events(workspace_id, created_at);
 
 -- Enable RLS on all workspace tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -247,36 +283,54 @@ ALTER TABLE public.prospects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.research_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sequences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sequence_steps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mailboxes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inbox_threads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.email_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.suppression_list ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scheduled_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.analytics_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.usage_events ENABLE ROW LEVEL SECURITY;
 
 -- Helper Functions for Workspace Membership & Roles
-CREATE OR REPLACE FUNCTION public.get_workspace_role(ws_id UUID)
-RETURNS TEXT AS $$
-DECLARE
-  m_role TEXT;
+CREATE OR REPLACE FUNCTION public.is_workspace_member(target_workspace_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.workspace_members
+    WHERE workspace_id = target_workspace_id
+      AND user_id = auth.uid()
+  ) OR EXISTS (
+    SELECT 1
+    FROM public.workspaces
+    WHERE id = target_workspace_id
+      AND owner_id = auth.uid()
+  );
+$$;
+
+-- Trigger to automatically create profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
 BEGIN
-  SELECT role INTO m_role FROM public.workspace_members
-  WHERE workspace_id = ws_id AND user_id = auth.uid();
-  RETURN m_role;
+  INSERT INTO public.profiles (id, email, full_name, avatar_url, role)
+  VALUES (
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'avatar_url',
+    'Owner'
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE FUNCTION public.is_workspace_member(ws_id UUID)
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.workspace_members
-    WHERE workspace_id = ws_id AND user_id = auth.uid()
-  ) OR EXISTS (
-    SELECT 1 FROM public.workspaces
-    WHERE id = ws_id AND owner_id = auth.uid()
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Profiles Policy
 CREATE POLICY "Users can read/update own profile" ON public.profiles
@@ -300,8 +354,10 @@ CREATE POLICY "Workspace member access for sequences" ON public.sequences FOR AL
 CREATE POLICY "Workspace member access for sequence_steps" ON public.sequence_steps FOR ALL USING (
   EXISTS (SELECT 1 FROM public.sequences s WHERE s.id = sequence_id AND public.is_workspace_member(s.workspace_id))
 );
+CREATE POLICY "Workspace member access for mailboxes" ON public.mailboxes FOR ALL USING (public.is_workspace_member(workspace_id));
 CREATE POLICY "Workspace member access for inbox_threads" ON public.inbox_threads FOR ALL USING (public.is_workspace_member(workspace_id));
 CREATE POLICY "Workspace member access for email_messages" ON public.email_messages FOR ALL USING (public.is_workspace_member(workspace_id));
 CREATE POLICY "Workspace member access for suppression_list" ON public.suppression_list FOR ALL USING (public.is_workspace_member(workspace_id));
 CREATE POLICY "Workspace member access for scheduled_jobs" ON public.scheduled_jobs FOR ALL USING (public.is_workspace_member(workspace_id));
 CREATE POLICY "Workspace member access for analytics_events" ON public.analytics_events FOR ALL USING (public.is_workspace_member(workspace_id));
+CREATE POLICY "Workspace member access for usage_events" ON public.usage_events FOR ALL USING (public.is_workspace_member(workspace_id));

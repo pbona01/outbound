@@ -5,25 +5,49 @@ import {
   Users,
   Building,
   Mail,
-  Zap,
   Plus,
-  ArrowUpRight,
-  Server,
 } from 'lucide-react';
-
 import { useToast } from "../../lib/state/ToastContext";
-
-
 import { useAppState } from "../../lib/state/AppStateContext";
-export function SettingsView() { const { showToast } = useToast(); const { resetStorage } = useAppState();
-  const [workspaceName, setWorkspaceName] = useState('GrowthStudio');
-  const [timezone, setTimezone] = useState('America/Chicago (Central Time)');
-  const [dailyCap, setDailyCap] = useState(35);
+import { useAuth } from "../../lib/auth/AuthProvider";
+import { useWorkspace } from "../../lib/workspaces/WorkspaceProvider";
 
-  const teamMembers = [
-    { name: 'Alex Vance', email: 'alex@growthstudio.co', role: 'Owner / Admin', status: 'Active' },
-    { name: 'Elena Rostova', email: 'elena@growthstudio.co', role: 'Growth Specialist', status: 'Active' },
-  ];
+export function SettingsView() {
+  const { showToast } = useToast();
+  const { resetStorage, prospects, campaigns } = useAppState();
+  const { user, profile } = useAuth();
+  const { workspace, updateWorkspace } = useWorkspace();
+
+  const [wsName, setWsName] = useState(workspace?.name || 'My Workspace');
+  const [industry, setIndustry] = useState(workspace?.industry || 'B2B Software');
+  const [geography, setGeography] = useState(workspace?.geography || 'United States');
+  const [companySize, setCompanySize] = useState(workspace?.company_size || '10-50 employees');
+  const [offer, setOffer] = useState(workspace?.offer || 'AI Web Optimization & Lead Gen');
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      if (workspace) {
+        await updateWorkspace({
+          name: wsName,
+          industry,
+          geography,
+          company_size: companySize,
+          offer,
+        });
+        showToast('Workspace Saved', 'Settings updated in database.');
+      }
+    } catch (err) {
+      showToast('Error', 'Failed to save workspace preferences.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const totalProspectsCount = prospects.length;
+  const totalCampaignsCount = campaigns.length;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -31,167 +55,127 @@ export function SettingsView() { const { showToast } = useToast(); const { reset
       <div>
         <h1 className="text-[26px] font-semibold text-[#111111] tracking-tight">Settings & Workspace</h1>
         <p className="text-[14px] text-[#686868] mt-0.5">
-          Manage sending mailbox health, deliverability guards, team access, and resource usage.
+          Manage sending mailbox preferences, target ICP parameters, and workspace configuration.
         </p>
       </div>
 
-      {/* Usage Quotas Card */}
+      {/* Account Profile Card */}
       <div className="p-6 bg-white rounded-2xl border border-black/[0.07] shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-4">
-        <div className="flex items-center justify-between">
+        <h3 className="text-[16px] font-semibold text-[#111111]">User Account</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
-            <h3 className="text-[16px] font-semibold text-[#111111]">Plan & Monthly Quotas</h3>
-            <p className="text-[12px] text-[#686868]">Growth Plan • Renews in 18 days</p>
-          </div>
-          <span className="text-[12px] font-semibold px-2.5 py-1 rounded-lg bg-stone-100 text-[#111111]">
-            Standard Tier
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-          <div className="p-3.5 rounded-xl bg-stone-50 border border-black/[0.05] space-y-1.5">
-            <div className="flex justify-between text-[12px]">
-              <span className="text-[#686868]">Prospects Researched</span>
-              <span className="font-semibold text-[#111111] tnum">1,284 / 5,000</span>
-            </div>
-            <div className="h-1.5 w-full bg-stone-200 rounded-full overflow-hidden">
-              <div className="h-full bg-[#3157FF] rounded-full" style={{ width: '25.6%' }} />
+            <label className="text-[#686868] block mb-1 font-medium">Full Name</label>
+            <div className="px-3 py-2 bg-[#f9f9f8] border border-black/10 rounded-xl font-medium text-[#111]">
+              {profile?.full_name || user?.user_metadata?.full_name || 'Account Owner'}
             </div>
           </div>
-
-          <div className="p-3.5 rounded-xl bg-stone-50 border border-black/[0.05] space-y-1.5">
-            <div className="flex justify-between text-[12px]">
-              <span className="text-[#686868]">Outbound Sends</span>
-              <span className="font-semibold text-[#111111] tnum">862 / 3,000</span>
-            </div>
-            <div className="h-1.5 w-full bg-stone-200 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full" style={{ width: '28.7%' }} />
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-stone-50 border border-black/[0.05] space-y-1.5">
-            <div className="flex justify-between text-[12px]">
-              <span className="text-[#686868]">Connected Mailboxes</span>
-              <span className="font-semibold text-[#111111] tnum">2 / 5</span>
-            </div>
-            <div className="h-1.5 w-full bg-stone-200 rounded-full overflow-hidden">
-              <div className="h-full bg-indigo-500 rounded-full" style={{ width: '40%' }} />
+          <div>
+            <label className="text-[#686868] block mb-1 font-medium">Email Address</label>
+            <div className="px-3 py-2 bg-[#f9f9f8] border border-black/10 rounded-xl font-mono text-[#111]">
+              {user?.email || 'user@company.com'}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Sending Mailbox Deliverability Health */}
+      {/* Workspace ICP Configuration */}
       <div className="p-6 bg-white rounded-2xl border border-black/[0.07] shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-600" />
-            <h3 className="text-[16px] font-semibold text-[#111111]">Connected Mailboxes & DNS Guard</h3>
-          </div>
-          <button
-            onClick={() => showToast('DNS Status', 'All SPF, DKIM, and DMARC records verified valid.')}
-            className="text-[12px] text-[#3157FF] hover:underline font-medium"
-          >
-            Recheck DNS Handshake
-          </button>
+          <h3 className="text-[16px] font-semibold text-[#111111]">Target Ideal Customer Profile (ICP)</h3>
+          <span className="text-xs text-[#888888] font-mono">ID: {workspace?.id?.slice(0, 8)}...</span>
         </div>
 
-        <div className="space-y-3">
-          <div className="p-4 rounded-xl border border-black/[0.06] bg-stone-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[13px] font-semibold text-[#111111]">alex@growthstudio.co</span>
-                <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                  98% Deliverability
-                </span>
-              </div>
-              <div className="flex items-center gap-3 text-[11px] text-[#686868]">
-                <span>SPF: Passed</span>
-                <span>•</span>
-                <span>DKIM: Passed (2048-bit)</span>
-                <span>•</span>
-                <span>DMARC: Strict</span>
-                <span>•</span>
-                <span>Warmup: Active (100% warmed)</span>
-              </div>
+        <div className="space-y-4 text-xs">
+          <div>
+            <label className="text-[#333] font-semibold block mb-1.5">Workspace Name</label>
+            <input
+              type="text"
+              value={wsName}
+              onChange={(e) => setWsName(e.target.value)}
+              className="w-full px-3 py-2 bg-[#f9f9f8] border border-black/10 rounded-xl text-xs focus:outline-none focus:border-[#3157FF]"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[#333] font-semibold block mb-1.5">Target Industry</label>
+              <input
+                type="text"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                className="w-full px-3 py-2 bg-[#f9f9f8] border border-black/10 rounded-xl text-xs focus:outline-none focus:border-[#3157FF]"
+              />
             </div>
 
-            <div className="flex items-center gap-2 self-end sm:self-auto text-[12px]">
-              <span className="text-[#686868]">Daily limit: 35/day</span>
+            <div>
+              <label className="text-[#333] font-semibold block mb-1.5">Target Geography</label>
+              <input
+                type="text"
+                value={geography}
+                onChange={(e) => setGeography(e.target.value)}
+                className="w-full px-3 py-2 bg-[#f9f9f8] border border-black/10 rounded-xl text-xs focus:outline-none focus:border-[#3157FF]"
+              />
             </div>
           </div>
 
-          <div className="p-4 rounded-xl border border-black/[0.06] bg-stone-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[13px] font-semibold text-[#111111]">elena@growthstudio.co</span>
-                <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                  96% Deliverability
-                </span>
-              </div>
-              <div className="flex items-center gap-3 text-[11px] text-[#686868]">
-                <span>SPF: Passed</span>
-                <span>•</span>
-                <span>DKIM: Passed</span>
-                <span>•</span>
-                <span>DMARC: Strict</span>
-                <span>•</span>
-                <span>Warmup: Active (92% warmed)</span>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[#333] font-semibold block mb-1.5">Target Company Size</label>
+              <input
+                type="text"
+                value={companySize}
+                onChange={(e) => setCompanySize(e.target.value)}
+                className="w-full px-3 py-2 bg-[#f9f9f8] border border-black/10 rounded-xl text-xs focus:outline-none focus:border-[#3157FF]"
+              />
             </div>
 
-            <div className="flex items-center gap-2 self-end sm:self-auto text-[12px]">
-              <span className="text-[#686868]">Daily limit: 25/day</span>
+            <div>
+              <label className="text-[#333] font-semibold block mb-1.5">Primary Value Proposition / Offer</label>
+              <input
+                type="text"
+                value={offer}
+                onChange={(e) => setOffer(e.target.value)}
+                className="w-full px-3 py-2 bg-[#f9f9f8] border border-black/10 rounded-xl text-xs focus:outline-none focus:border-[#3157FF]"
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Team Members */}
+      {/* Workspace Usage Summary */}
       <div className="p-6 bg-white rounded-2xl border border-black/[0.07] shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[16px] font-semibold text-[#111111]">Team Members</h3>
-          <button
-            onClick={() => showToast('Invite link generated', 'Copied teammate invitation link.')}
-            className="px-3 py-1.5 rounded-xl text-[12px] font-medium border border-black/[0.08] hover:bg-stone-50 transition-colors flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Invite Member
-          </button>
-        </div>
-
-        <div className="divide-y divide-black/[0.05]">
-          {teamMembers.map((member, idx) => (
-            <div key={idx} className="py-3 flex items-center justify-between text-[13px]">
-              <div>
-                <span className="font-medium text-[#111111]">{member.name}</span>
-                <span className="text-[12px] text-[#686868] ml-2 font-mono">{member.email}</span>
-              </div>
-              <span className="text-[12px] font-medium text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-md">
-                {member.role}
-              </span>
-            </div>
-          ))}
+        <h3 className="text-[16px] font-semibold text-[#111111]">Workspace Metrics</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl bg-stone-50 border border-black/[0.05] space-y-1">
+            <span className="text-xs text-[#686868]">Discovered Prospects</span>
+            <div className="text-xl font-bold text-[#111]">{totalProspectsCount}</div>
+          </div>
+          <div className="p-4 rounded-xl bg-stone-50 border border-black/[0.05] space-y-1">
+            <span className="text-xs text-[#686868]">Active Campaigns</span>
+            <div className="text-xl font-bold text-[#111]">{totalCampaignsCount}</div>
+          </div>
         </div>
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center pt-2">
         <button
           onClick={() => {
-            if (window.confirm('Are you sure you want to reset all demo data? This will clear local storage and restore default mock data.')) {
+            if (window.confirm('Reset workspace local state cache?')) {
               resetStorage();
             }
           }}
-          className="px-4 py-2 rounded-xl text-[13px] font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+          className="px-4 py-2 rounded-xl text-xs font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors"
         >
-          Reset Demo Data
+          Clear Workspace Cache
         </button>
 
         <button
-          onClick={() => showToast('Settings Saved', 'Workspace configuration updated successfully.')}
-          className="px-5 py-2.5 rounded-xl text-[13px] font-medium text-white bg-[#111111] hover:bg-black transition-colors"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#111111] hover:bg-black transition-colors disabled:opacity-50"
         >
-          Save Workspace Preferences
+          {isSaving ? 'Saving...' : 'Save Workspace Settings'}
         </button>
       </div>
     </div>
