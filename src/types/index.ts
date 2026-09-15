@@ -56,6 +56,29 @@ export interface GeneratedEmail {
   charCount: number;
 }
 
+export interface CompanyResearchResult {
+  companyName: string;
+  domain: string;
+  industry: string;
+  location: string;
+  decisionMaker: {
+    name: string;
+    role: string;
+    email: string;
+    verified: boolean;
+  };
+  score: number;
+  techStack: string[];
+  observations: {
+    issue: string;
+    evidence: string;
+  }[];
+  generatedEmail: {
+    subject: string;
+    body: string;
+  };
+}
+
 export interface LeadScoreBreakdown {
   businessRelevance: number; // max 25
   commercialValue: number; // max 20
@@ -150,18 +173,23 @@ export interface Campaign {
 export interface SequenceStep {
   id: string;
   stepNumber: number;
-  type: 'email' | 'wait';
+  type?: 'email' | 'wait';
+  name?: string;
   delayDays?: number;
   subject?: string;
   bodyPreview?: string;
-  channel: 'email' | 'linkedin' | 'whatsapp';
-  isAvailable: boolean;
+  description?: string;
+  replyRate?: string;
+  active?: boolean;
+  body?: string;
+  channel?: 'email' | 'linkedin' | 'whatsapp';
+  isAvailable?: boolean;
 }
 
 export interface Sequence {
   id: string;
   name: string;
-  templateType: 'Gentle' | 'Direct' | 'Value-led';
+  templateType?: 'Gentle' | 'Direct' | 'Value-led';
   steps: SequenceStep[];
 }
 

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Campaign, Prospect, InboxThread, NeedsAttentionItem } from '../../types';
+import { Campaign, Prospect, InboxThread, NeedsAttentionItem, Sequence, CompanyResearchResult } from '../../types';
 import { getApiClient } from '../api/client';
 
 interface AppState {
@@ -7,6 +7,9 @@ interface AppState {
   prospects: Prospect[];
   inboxThreads: InboxThread[];
   needsAttention: NeedsAttentionItem[];
+  sequences: Sequence[];
+  refreshSequences: () => Promise<void>;
+  updateSequenceStep: (sequenceId: string, stepId: string, updates: any) => Promise<void>;
   isLoading: boolean;
   error: Error | null;
   refreshCampaigns: () => Promise<void>;
@@ -14,7 +17,12 @@ interface AppState {
   refreshInbox: () => Promise<void>;
   updateCampaignStatus: (id: string, status: Campaign['status']) => Promise<void>;
   updateProspectStatus: (id: string, status: Prospect['status']) => Promise<void>;
+  addProspectsToCampaign: (prospectIds: string[], campaignId: string) => Promise<void>;
+  researchCompany: (domain: string, role?: string) => Promise<CompanyResearchResult>;
+  addResearchedProspect: (result: CompanyResearchResult, campaignId?: string) => Promise<Prospect>;
   addCampaign: (campaign: Partial<Campaign>) => Promise<Campaign>;
+  sendReply: (threadId: string, body: string) => Promise<void>;
+  resetStorage: () => void;
 }
 
 const AppStateContext = createContext<AppState | undefined>(undefined);
@@ -24,6 +32,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [inboxThreads, setInboxThreads] = useState<InboxThread[]>([]);
   const [needsAttention, setNeedsAttention] = useState<NeedsAttentionItem[]>([]);
+  const [sequences, setSequences] = useState<Sequence[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -32,16 +41,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [c, p, i, n] = await Promise.all([
+      const [c, p, i, n, s] = await Promise.all([
         api.getCampaigns(),
         api.getProspects(),
         api.getInboxThreads(),
-        api.getNeedsAttention()
+        api.getNeedsAttention(),
+        api.getSequences()
       ]);
       setCampaigns(c);
       setProspects(p);
       setInboxThreads(i);
       setNeedsAttention(n);
+      setSequences(s);
     } catch (err: any) {
       setError(err);
     } finally {
@@ -68,6 +79,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setInboxThreads(i);
   };
 
+  const refreshSequences = async () => {
+    const s = await api.getSequences();
+    setSequences(s);
+  };
+
+  const updateSequenceStep = async (sequenceId: string, stepId: string, updates: any) => {
+    try {
+      const seq = await api.updateSequenceStep(sequenceId, stepId, updates);
+      setSequences(prev => prev.map(s => s.id === sequenceId ? seq : s));
+    } catch (error) {
+      await refreshSequences();
+      throw error;
+    }
+  };
+
   const updateCampaignStatus = async (id: string, status: Campaign['status']) => {
     // Optimistic update
     setCampaigns(prev => prev.map(c => c.id === id ? { ...c, status } : c));
@@ -90,10 +116,39 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const addProspectsToCampaign = async (prospectIds: string[], campaignId: string) => {
+    try {
+      await api.addProspectsToCampaign(prospectIds, campaignId);
+      await Promise.all([refreshProspects(), refreshCampaigns()]);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const researchCompany = async (domain: string, role?: string) => {
+    return await api.researchCompany(domain, role);
+  };
+
+  const addResearchedProspect = async (result: CompanyResearchResult, campaignId?: string) => {
+    const newProspect = await api.addResearchedProspect(result, campaignId);
+    await Promise.all([refreshProspects(), refreshCampaigns()]);
+    return newProspect;
+  };
+
   const addCampaign = async (campaign: Partial<Campaign>) => {
     const newCampaign = await api.createCampaign(campaign);
-    setCampaigns(prev => [newCampaign, ...prev]);
+    await Promise.all([refreshCampaigns(), refreshProspects()]);
     return newCampaign;
+  };
+
+  const sendReply = async (threadId: string, body: string) => {
+    const updatedThread = await api.sendReply(threadId, body);
+    setInboxThreads(prev => prev.map(t => t.id === threadId ? updatedThread : t));
+  };
+
+  const resetStorage = () => {
+    localStorage.removeItem('outboundos_state_v1');
+    window.location.reload();
   };
 
   const value = {
@@ -101,14 +156,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     prospects,
     inboxThreads,
     needsAttention,
+    sequences,
     isLoading,
     error,
     refreshCampaigns,
     refreshProspects,
     refreshInbox,
+    refreshSequences,
     updateCampaignStatus,
     updateProspectStatus,
-    addCampaign
+    addProspectsToCampaign,
+    researchCompany,
+    addResearchedProspect,
+    updateSequenceStep,
+    addCampaign,
+    sendReply,
+    resetStorage
   };
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

@@ -23,7 +23,7 @@ import { useAppState } from '../../lib/state/AppStateContext';
 import { useToast } from '../../lib/state/ToastContext';
 
 export function InboxView() {
-  const { inboxThreads: threads } = useAppState();
+  const { inboxThreads: threads, sendReply } = useAppState();
   const { showToast } = useToast();
   const { setSelectedProspectId } = useOutletContext<{ setSelectedProspectId: (id: string | null) => void }>();
   const [selectedCategory, setSelectedCategory] = useState<
@@ -35,6 +35,7 @@ export function InboxView() {
   const [replyText, setReplyText] = useState('');
   const [showCompanyDetails, setShowCompanyDetails] = useState(false);
   const [isRegeneratingAi, setIsRegeneratingAi] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   const categories = [
     { id: 'interested' as const, label: 'Interested', count: threads.filter((t) => t.classification === 'interested').length },
@@ -64,10 +65,18 @@ export function InboxView() {
     }
   };
 
-  const handleSendReply = () => {
-    if (!replyText.trim()) return;
-    showToast('Response Dispatched', `Sent email to ${activeThread.prospectName} (${activeThread.email}).`);
-    setReplyText('');
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !activeThread) return;
+    setIsSending(true);
+    try {
+      await sendReply(activeThread.id, replyText);
+      showToast('Response Dispatched', `Sent email to ${activeThread.prospectName} (${activeThread.email}).`);
+      setReplyText('');
+    } catch (error) {
+      showToast('Error Sending', 'Could not send the reply. Please try again.', 'error');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleRegenerateAiReply = () => {
@@ -353,11 +362,15 @@ export function InboxView() {
                     <span className="text-[11px] text-[#949494]">Sends from: alex@growthstudio.co</span>
                     <button
                       onClick={handleSendReply}
-                      disabled={!replyText.trim()}
+                      disabled={!replyText.trim() || isSending}
                       className="px-4 py-1.5 rounded-xl text-[13px] font-medium text-white bg-[#3157FF] hover:bg-[#2545D9] transition-colors disabled:opacity-40 flex items-center gap-1.5"
                     >
-                      <Send className="w-3.5 h-3.5" />
-                      Approve & Send
+                      {isSending ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5" />
+                      )}
+                      {isSending ? 'Sending...' : 'Approve & Send'}
                     </button>
                   </div>
                 </div>

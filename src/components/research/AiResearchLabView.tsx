@@ -12,29 +12,26 @@ import {
   Loader2,
   Copy,
   Check,
+  ChevronDown,
+  Layers,
 } from 'lucide-react';
 import { useToast } from '../../lib/state/ToastContext';
+import { useAppState } from '../../lib/state/AppStateContext';
+import { CompanyResearchResult } from '../../types';
 
 export function AiResearchLabView() {
   const { showToast } = useToast();
+  const { researchCompany, addResearchedProspect, campaigns } = useAppState();
   
   const [urlInput, setUrlInput] = useState('https://stoneandoakremodeling.com');
   const [targetRole, setTargetRole] = useState('Owner / Founder');
   const [isCrawling, setIsCrawling] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showQueueDropdown, setShowQueueDropdown] = useState(false);
 
   // Result state
-  const [result, setResult] = useState<{
-    companyName: string;
-    domain: string;
-    industry: string;
-    location: string;
-    decisionMaker: { name: string; role: string; email: string; verified: boolean };
-    score: number;
-    techStack: string[];
-    observations: { issue: string; evidence: string }[];
-    generatedEmail: { subject: string; body: string };
-  } | null>({
+  const [result, setResult] = useState<CompanyResearchResult | null>({
     companyName: 'Stone & Oak Remodeling',
     domain: 'stoneandoakremodeling.com',
     industry: 'Kitchen & Bath Remodeling',
@@ -67,13 +64,38 @@ export function AiResearchLabView() {
     },
   });
 
-  const handleRunCrawler = () => {
-    if (!urlInput.trim()) return;
+  const handleRunCrawler = async (overrideUrl?: string) => {
+    const targetUrl = overrideUrl || urlInput;
+    if (!targetUrl.trim()) return;
     setIsCrawling(true);
-    setTimeout(() => {
+    try {
+      const data = await researchCompany(targetUrl, targetRole);
+      setResult(data);
+      showToast('Domain Audited', `Extracted ICP attributes and generated personalized email copy for ${data.domain}.`);
+    } catch {
+      showToast('Research Error', 'Failed to audit the target website domain.', 'error');
+    } finally {
       setIsCrawling(false);
-      showToast('Domain Audited', `Extracted full ICP attributes and generated personalized email copy for ${urlInput}.`);
-    }, 1200);
+    }
+  };
+
+  const handleQueueIntoCampaign = async (campaignId?: string) => {
+    if (!result) return;
+    setIsSaving(true);
+    try {
+      await addResearchedProspect(result, campaignId);
+      const campaign = campaigns.find(c => c.id === campaignId);
+      if (campaign) {
+        showToast('Queued into Campaign', `Assigned ${result.companyName} directly to ${campaign.name}.`);
+      } else {
+        showToast('Saved to Prospects', `Added ${result.companyName} to verified prospects list.`);
+      }
+      setShowQueueDropdown(false);
+    } catch {
+      showToast('Error', 'Failed to save prospect record.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCopyEmail = () => {
@@ -120,7 +142,7 @@ export function AiResearchLabView() {
           </div>
 
           <button
-            onClick={handleRunCrawler}
+            onClick={() => handleRunCrawler()}
             disabled={isCrawling}
             className="px-5 py-2.5 rounded-xl text-[13px] font-medium text-white bg-[#3157FF] hover:bg-[#2545D9] transition-colors flex items-center justify-center gap-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] disabled:opacity-50 shrink-0"
           >
@@ -136,6 +158,29 @@ export function AiResearchLabView() {
               </>
             )}
           </button>
+        </div>
+
+        {/* Quick Domain Presets */}
+        <div className="flex items-center gap-2 pt-1 flex-wrap">
+          <span className="text-[11px] font-medium text-[#949494]">Quick test domains:</span>
+          {[
+            { label: 'Stone & Oak (Remodeling)', url: 'https://stoneandoakremodeling.com', role: 'Founder & Principal' },
+            { label: 'Apex Roofing (Contracting)', url: 'https://apexroofingsystems.com', role: 'Managing Partner' },
+            { label: 'Evergreen (Plumbing)', url: 'https://evergreendraincleaning.com', role: 'Owner' },
+            { label: 'BlueStar (HVAC)', url: 'https://bluestarclimate.com', role: 'President' },
+          ].map((preset) => (
+            <button
+              key={preset.url}
+              onClick={() => {
+                setUrlInput(preset.url);
+                setTargetRole(preset.role);
+                handleRunCrawler(preset.url);
+              }}
+              className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-stone-100/80 hover:bg-stone-200/70 text-[#686868] hover:text-[#111111] transition-colors"
+            >
+              {preset.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -262,14 +307,54 @@ export function AiResearchLabView() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-black/[0.06] flex items-center justify-between">
+            <div className="pt-4 border-t border-black/[0.06] flex items-center justify-between gap-3">
               <span className="text-[12px] text-[#686868]">No placeholder slop. Grounded in actual site crawl.</span>
-              <button
-                onClick={() => showToast('Queued', 'Added directly to Texas Kitchen Remodelers sequence.')}
-                className="px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-[#3157FF] hover:bg-[#2545D9] transition-colors"
-              >
-                Queue into Sequence
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowQueueDropdown(!showQueueDropdown)}
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-[#3157FF] hover:bg-[#2545D9] transition-colors flex items-center gap-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isSaving ? 'Saving...' : 'Queue into Sequence'}</span>
+                  <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                </button>
+
+                {showQueueDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setShowQueueDropdown(false)} />
+                    <div className="absolute right-0 bottom-full mb-1.5 w-64 bg-white rounded-xl shadow-xl border border-black/[0.08] z-30 overflow-hidden">
+                      <div className="p-2.5 border-b border-black/[0.04] bg-stone-50/50">
+                        <span className="text-[11px] font-semibold text-[#949494] uppercase tracking-wider block">
+                          Destination Campaign
+                        </span>
+                      </div>
+                      <div className="max-h-[260px] overflow-y-auto p-1">
+                        <button
+                          onClick={() => handleQueueIntoCampaign(undefined)}
+                          className="w-full text-left px-3 py-2 rounded-lg text-[13px] font-medium text-[#111111] hover:bg-stone-50 transition-colors flex items-center gap-2"
+                        >
+                          <Target className="w-3.5 h-3.5 text-[#686868]" />
+                          <span>Save as Unassigned Prospect</span>
+                        </button>
+                        {campaigns.length > 0 && (
+                          <div className="my-1 border-t border-black/[0.04]" />
+                        )}
+                        {campaigns.map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() => handleQueueIntoCampaign(c.id)}
+                            className="w-full text-left px-3 py-2 rounded-lg text-[13px] font-medium text-[#111111] hover:bg-stone-50 transition-colors flex items-center gap-2"
+                          >
+                            <Layers className="w-3.5 h-3.5 text-[#3157FF]" />
+                            <span className="truncate">{c.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

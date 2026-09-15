@@ -14,7 +14,8 @@ import {
 import { useToast } from "../../lib/state/ToastContext";
 
 
-export function SettingsView() { const { showToast } = useToast();
+import { useAppState } from "../../lib/state/AppStateContext";
+export function SettingsView() { const { showToast } = useToast(); const { resetStorage } = useAppState();
   const [workspaceName, setWorkspaceName] = useState('GrowthStudio');
   const [timezone, setTimezone] = useState('America/Chicago (Central Time)');
   const [dailyCap, setDailyCap] = useState(35);
@@ -174,7 +175,18 @@ export function SettingsView() { const { showToast } = useToast();
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        <button
+          onClick={() => {
+            if (window.confirm('Are you sure you want to reset all demo data? This will clear local storage and restore default mock data.')) {
+              resetStorage();
+            }
+          }}
+          className="px-4 py-2 rounded-xl text-[13px] font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+        >
+          Reset Demo Data
+        </button>
+
         <button
           onClick={() => showToast('Settings Saved', 'Workspace configuration updated successfully.')}
           className="px-5 py-2.5 rounded-xl text-[13px] font-medium text-white bg-[#111111] hover:bg-black transition-colors"

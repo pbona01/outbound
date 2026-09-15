@@ -13,60 +13,29 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useToast } from '../../lib/state/ToastContext';
+import { useAppState } from '../../lib/state/AppStateContext';
 
 export function SequencesView() {
   const { showToast } = useToast();
-  const [steps, setSteps] = useState([
-    {
-      id: 'step-1',
-      stepNumber: 1,
-      name: 'Initial Value-Led Outreach',
-      subject: 'Quick idea for {{company.name}}',
-      delayDays: 0,
-      description: 'Cites specific mobile UX friction or portfolio conversion gap and offers a visual mockup.',
-      replyRate: '5.8%',
-      active: true,
-    },
-    {
-      id: 'step-2',
-      stepNumber: 2,
-      name: 'Figma Mockup Walkthrough Follow-up',
-      subject: 'Re: Quick idea for {{company.name}}',
-      delayDays: 3,
-      description: 'Sends short 90-second video walkthrough illustrating the 1-click consultation flow.',
-      replyRate: '3.4%',
-      active: true,
-    },
-    {
-      id: 'step-3',
-      stepNumber: 3,
-      name: 'Peer Benchmark & Conversion Case Study',
-      subject: 'Texas remodeling conversion benchmark',
-      delayDays: 4,
-      description: 'Shares tangible conversion uplift metrics (+34%) from peer Austin remodeler.',
-      replyRate: '1.9%',
-      active: true,
-    },
-    {
-      id: 'step-4',
-      stepNumber: 4,
-      name: 'Permission-Based Graceful Breakup',
-      subject: 'Closing file on {{company.name}}',
-      delayDays: 7,
-      description: 'Low-friction sign-off letting them know we will not follow up further unless requested.',
-      replyRate: '0.8%',
-      active: true,
-    },
-  ]);
+  const { sequences, updateSequenceStep } = useAppState();
+  
+  const activeSequence = sequences[0];
+  const steps = activeSequence?.steps || [];
 
-  const [activeStepId, setActiveStepId] = useState<string>('step-1');
-
-  const handleToggleStep = (id: string) => {
-    setSteps((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, active: !s.active } : s))
-    );
-    showToast('Sequence Updated', 'Step status adjusted.');
+  const handleToggleStep = async (stepId: string, currentStatus: boolean) => {
+    if (!activeSequence) return;
+    try {
+      await updateSequenceStep(activeSequence.id, stepId, { active: !currentStatus });
+      showToast(
+        currentStatus ? 'Step Paused' : 'Step Activated',
+        currentStatus ? 'Prospects will skip this step.' : 'Step is now active in the sequence.'
+      );
+    } catch (e) {
+      showToast('Error', 'Could not update sequence step', 'error');
+    }
   };
+
+  const [activeStepId, setActiveStepId] = useState<string>("step-1");
 
   const selectedStep = steps.find((s) => s.id === activeStepId) || steps[0];
 
@@ -94,16 +63,29 @@ export function SequencesView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Timeline Steps */}
         <div className="lg:col-span-2 space-y-3">
-          {steps.map((step, idx) => (
-            <div key={step.id} className="space-y-3">
-              <div
-                onClick={() => setActiveStepId(step.id)}
-                className={`p-5 rounded-2xl border transition-all cursor-pointer bg-white ${
-                  activeStepId === step.id
-                    ? 'border-[#3157FF] shadow-[0_4px_12px_rgba(49,87,255,0.08)]'
-                    : 'border-black/[0.07] hover:border-black/[0.14]'
-                }`}
-              >
+          {steps.length === 0 ? (
+            <div className="p-10 bg-white rounded-2xl border border-black/[0.07] border-dashed flex flex-col items-center justify-center text-center space-y-3 h-full min-h-[300px]">
+              <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center">
+                <GitFork className="w-5 h-5 text-[#949494]" />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-semibold text-[#111111]">No steps in this sequence</h3>
+                <p className="text-[13px] text-[#686868] mt-1 max-w-sm">
+                  Add an email step to start building your follow-up cadence.
+                </p>
+              </div>
+            </div>
+          ) : (
+            steps.map((step, idx) => (
+              <div key={step.id} className="space-y-3">
+                <div
+                  onClick={() => setActiveStepId(step.id)}
+                  className={`p-5 rounded-2xl border transition-all cursor-pointer bg-white ${
+                    activeStepId === step.id
+                      ? 'border-[#3157FF] shadow-[0_4px_12px_rgba(49,87,255,0.08)]'
+                      : 'border-black/[0.07] hover:border-black/[0.14]'
+                  }`}
+                >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5">
                     <span className="w-6 h-6 rounded-lg bg-stone-100 border border-black/[0.05] flex items-center justify-center font-semibold text-xs text-[#111111] tnum">
@@ -124,7 +106,7 @@ export function SequencesView() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleToggleStep(step.id);
+                        handleToggleStep(step.id, step.active);
                       }}
                       className="p-1 text-[#686868] hover:text-[#111111]"
                     >
@@ -151,7 +133,7 @@ export function SequencesView() {
                 </div>
               )}
             </div>
-          ))}
+          )))}
         </div>
 
         {/* Right 1 Col: Step Inspector / Prompt Guidance */}
@@ -172,9 +154,9 @@ export function SequencesView() {
                 value={selectedStep.name}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setSteps((prev) =>
-                    prev.map((s) => (s.id === selectedStep.id ? { ...s, name: val } : s))
-                  );
+                  if (activeSequence) {
+                    updateSequenceStep(activeSequence.id, selectedStep.id, { name: val });
+                  }
                 }}
                 className="w-full px-3 py-2 rounded-xl border border-black/[0.08] text-[13px] text-[#111111]"
               />
@@ -188,9 +170,9 @@ export function SequencesView() {
                   value={selectedStep.delayDays}
                   onChange={(e) => {
                     const val = Number(e.target.value);
-                    setSteps((prev) =>
-                      prev.map((s) => (s.id === selectedStep.id ? { ...s, delayDays: val } : s))
-                    );
+                    if (activeSequence) {
+                      updateSequenceStep(activeSequence.id, selectedStep.id, { delayDays: val });
+                    }
                   }}
                   className="w-20 px-3 py-2 rounded-xl border border-black/[0.08] text-[13px] text-[#111111]"
                 />

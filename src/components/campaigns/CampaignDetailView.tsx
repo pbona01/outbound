@@ -217,19 +217,25 @@ export function CampaignDetailView() {
                 <div className="flex justify-between py-1 border-b border-black/[0.04]">
                   <span className="text-[#686868]">Reply Rate:</span>
                   <span className="font-semibold text-emerald-700 tnum">
-                    {((campaign.stats.replies / (campaign.stats.sent || 1)) * 100).toFixed(1)}%
+                    {campaign.stats.sent > 0
+                      ? `${((campaign.stats.replies / campaign.stats.sent) * 100).toFixed(1)}%`
+                      : '0.0%'}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-black/[0.04]">
                   <span className="text-[#686868]">Positive Intent Rate:</span>
                   <span className="font-semibold text-emerald-700 tnum">
-                    {((campaign.stats.positiveReplies / (campaign.stats.sent || 1)) * 100).toFixed(1)}%
+                    {campaign.stats.sent > 0
+                      ? `${((campaign.stats.positiveReplies / campaign.stats.sent) * 100).toFixed(1)}%`
+                      : '0.0%'}
                   </span>
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-[#686868]">Meeting Booking Rate:</span>
                   <span className="font-semibold text-[#3157FF] tnum">
-                    {((campaign.stats.meetings / (campaign.stats.sent || 1)) * 100).toFixed(1)}%
+                    {campaign.stats.sent > 0
+                      ? `${((campaign.stats.meetings / campaign.stats.sent) * 100).toFixed(1)}%`
+                      : '0.0%'}
                   </span>
                 </div>
               </div>
@@ -260,33 +266,47 @@ export function CampaignDetailView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/[0.05]">
-                {campaignProspects.map((p) => {
-                  const score = getScoreColor(p.fitScore);
-                  const status = getStatusBadge(p.status);
-                  return (
-                    <tr
-                      key={p.id}
-                      onClick={() => onSelectProspect(p)}
-                      className="hover:bg-stone-50 cursor-pointer transition-colors"
-                    >
-                      <td className="py-3 px-4 font-medium text-[#111111]">{p.company.name}</td>
-                      <td className="py-3 px-4 text-[#686868]">
-                        {p.contact.fullName} ({p.contact.role})
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${score.bg} ${score.text}`}>
-                          {p.fitScore}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-[#686868] truncate max-w-[200px]">“{p.primaryProblem}”</td>
-                      <td className="py-3 px-4 text-right">
-                        <span className={`text-[11px] px-2 py-0.5 rounded-full border ${status.classes}`}>
-                          {status.label}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {campaignProspects.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <Users className="w-5 h-5 text-[#949494]" />
+                        <h4 className="text-[14px] font-medium text-[#111111]">No prospects assigned</h4>
+                        <p className="text-[13px] text-[#686868] max-w-sm">
+                          Find and select prospects from the Discovery tab to enroll them in this campaign.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  campaignProspects.map((p) => {
+                    const score = getScoreColor(p.fitScore);
+                    const status = getStatusBadge(p.status);
+                    return (
+                      <tr
+                        key={p.id}
+                        onClick={() => onSelectProspect(p)}
+                        className="hover:bg-stone-50 cursor-pointer transition-colors"
+                      >
+                        <td className="py-3 px-4 font-medium text-[#111111]">{p.company.name}</td>
+                        <td className="py-3 px-4 text-[#686868]">
+                          {p.contact.fullName} ({p.contact.role})
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${score.bg} ${score.text}`}>
+                            {p.fitScore}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-[#686868] truncate max-w-[200px]">“{p.primaryProblem}”</td>
+                        <td className="py-3 px-4 text-right">
+                          <span className={`text-[11px] px-2 py-0.5 rounded-full border ${status.classes}`}>
+                            {status.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

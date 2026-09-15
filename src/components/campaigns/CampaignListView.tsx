@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { Plus, Search, Send, Users, MessageSquare, CheckCircle2, Calendar, Pause, Play } from 'lucide-react';
+import { Plus, Search, Send, Users, MessageSquare, CheckCircle2, Calendar, Pause, Play, Rocket } from 'lucide-react';
 import { Campaign } from '../../types';
 import { useAppState } from '../../lib/state/AppStateContext';
 import { useToast } from '../../lib/state/ToastContext';
@@ -77,14 +77,35 @@ export function CampaignListView() {
               >
                 {s}
               </button>
-            ))}
+            )
+        )}
           </div>
         </div>
       </div>
 
       {/* Campaign Cards List */}
       <div className="space-y-3">
-        {filtered.map((campaign) => (
+        {filtered.length === 0 ? (
+          <div className="p-10 bg-white rounded-2xl border border-black/[0.07] border-dashed flex flex-col items-center justify-center text-center space-y-3">
+            <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center">
+              <Rocket className="w-5 h-5 text-[#949494]" />
+            </div>
+            <div>
+              <h3 className="text-[15px] font-semibold text-[#111111]">No campaigns found</h3>
+              <p className="text-[13px] text-[#686868] mt-1 max-w-sm">
+                You haven't created any campaigns matching this criteria. Start a new campaign to discover prospects and launch outreach.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsCampaignWizardOpen(true)}
+              className="mt-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-[#111111] hover:bg-black transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              Create your first campaign
+            </button>
+          </div>
+        ) : (
+          filtered.map((campaign) => (
           <div
             key={campaign.id}
             onClick={() => onSelectCampaign(campaign)}
@@ -160,7 +181,7 @@ export function CampaignListView() {
               </div>
             </div>
           </div>
-        ))}
+        )))}
       </div>
     </div>
   );

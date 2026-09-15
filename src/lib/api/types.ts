@@ -1,4 +1,4 @@
-import { Campaign, Prospect, InboxThread, NeedsAttentionItem } from '../../types';
+import { Campaign, Prospect, InboxThread, NeedsAttentionItem, Sequence, CompanyResearchResult } from '../../types';
 
 export interface ApiClient {
   // Campaigns
@@ -11,15 +11,22 @@ export interface ApiClient {
   getProspects(filters?: any): Promise<Prospect[]>;
   getProspect(id: string): Promise<Prospect>;
   updateProspectStatus(id: string, status: Prospect['status']): Promise<Prospect>;
+  addProspectsToCampaign(prospectIds: string[], campaignId: string): Promise<void>;
+  addResearchedProspect(result: CompanyResearchResult, campaignId?: string): Promise<Prospect>;
 
   // Inbox
   getInboxThreads(): Promise<InboxThread[]>;
+  sendReply(threadId: string, body: string): Promise<InboxThread>;
+
+  // Sequences
+  getSequences(): Promise<Sequence[]>;
+  updateSequenceStep(sequenceId: string, stepId: string, updates: any): Promise<Sequence>;
 
   // Needs Attention
   getNeedsAttention(): Promise<NeedsAttentionItem[]>;
 
   // AI & Research Tasks
   discoverProspects(criteria: any): Promise<Prospect[]>;
-  researchCompany(domain: string): Promise<any>;
+  researchCompany(domain: string, role?: string): Promise<CompanyResearchResult>;
   generatePersonalizedEmail(prospectId: string, campaignId: string): Promise<any>;
 }

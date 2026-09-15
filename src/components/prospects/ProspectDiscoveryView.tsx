@@ -21,7 +21,7 @@ import { useAppState } from '../../lib/state/AppStateContext';
 import { useToast } from '../../lib/state/ToastContext';
 
 export function ProspectDiscoveryView() {
-  const { prospects } = useAppState();
+  const { prospects, campaigns, addProspectsToCampaign } = useAppState();
   const { showToast } = useToast();
   const { setSelectedProspectId, setIsCampaignWizardOpen } = useOutletContext<{ 
     setSelectedProspectId: (id: string | null) => void,
@@ -39,6 +39,7 @@ export function ProspectDiscoveryView() {
   const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false);
 
   // Filtered & sorted prospects
   const filteredProspects = useMemo(() => {
@@ -131,10 +132,17 @@ export function ProspectDiscoveryView() {
     showToast('CSV exported', `Exported ${filteredProspects.length} verified prospect records.`);
   };
 
-  const handleBulkAddToCampaign = () => {
+  const handleBulkAddToCampaign = async (campaignId: string) => {
     if (selectedIds.size === 0) return;
-    showToast('Added to campaign queue', `Assigned ${selectedIds.size} prospects to Texas Kitchen Remodelers.`);
-    setSelectedIds(new Set());
+    try {
+      await addProspectsToCampaign(Array.from(selectedIds), campaignId);
+      const campaign = campaigns.find((c) => c.id === campaignId);
+      showToast('Added to campaign', `Assigned ${selectedIds.size} prospects to ${campaign?.name}.`);
+      setSelectedIds(new Set());
+      setShowAssignDropdown(false);
+    } catch (e) {
+      showToast('Error', 'Failed to add prospects to campaign', 'error');
+    }
   };
 
   return (
@@ -149,13 +157,44 @@ export function ProspectDiscoveryView() {
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <button
-              onClick={handleBulkAddToCampaign}
-              className="px-3.5 py-2 rounded-xl text-[13px] font-medium bg-[#111111] text-white hover:bg-black transition-colors flex items-center gap-1.5"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              Add ({selectedIds.size}) to Campaign
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowAssignDropdown(!showAssignDropdown)}
+                className="px-3.5 py-2 rounded-xl text-[13px] font-medium bg-[#111111] text-white hover:bg-black transition-colors flex items-center gap-1.5"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                Add ({selectedIds.size}) to Campaign
+              </button>
+              {showAssignDropdown && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowAssignDropdown(false)} />
+                  <div className="absolute right-0 top-full mt-1.5 w-64 bg-white rounded-xl shadow-lg border border-black/[0.08] z-20 overflow-hidden">
+                    <div className="p-2 border-b border-black/[0.04]">
+                      <span className="text-[11px] font-semibold text-[#949494] uppercase tracking-wider px-2">
+                        Select Campaign
+                      </span>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto p-1">
+                      {campaigns.length === 0 ? (
+                        <div className="px-3 py-4 text-center text-[13px] text-[#686868]">
+                          No campaigns available.
+                        </div>
+                      ) : (
+                        campaigns.map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() => handleBulkAddToCampaign(c.id)}
+                            className="w-full text-left px-3 py-2 rounded-lg text-[13px] font-medium text-[#111111] hover:bg-stone-50 transition-colors"
+                          >
+                            {c.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           )}
           <button
             onClick={onOpenCampaignWizard}
