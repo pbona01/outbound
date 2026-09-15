@@ -150,6 +150,19 @@ export class MockApiClient implements ApiClient {
     return state.inboxThreads[index];
   }
 
+  async updateThreadClassification(threadId: string, classification: string): Promise<InboxThread> {
+    await delay(200);
+    const state = this.data;
+    const index = state.inboxThreads.findIndex(t => t.id === threadId);
+    if (index === -1) throw new Error('Thread not found');
+
+    const thread = state.inboxThreads[index];
+    thread.classification = classification as any;
+    state.inboxThreads[index] = { ...thread };
+    this.save(state);
+    return state.inboxThreads[index];
+  }
+
   async getSequences(): Promise<Sequence[]> {
     await delay(200);
     const state = this.data;
@@ -199,6 +212,32 @@ export class MockApiClient implements ApiClient {
     if (stepIndex === -1) throw new Error('Step not found');
 
     seq.steps[stepIndex] = { ...seq.steps[stepIndex], ...updates };
+    state.sequences[seqIndex] = { ...seq };
+    this.save(state);
+    return seq;
+  }
+
+  async addSequenceStep(sequenceId: string, step: any): Promise<Sequence> {
+    await delay(200);
+    const state = this.data;
+    const seqIndex = state.sequences.findIndex(s => s.id === sequenceId);
+    if (seqIndex === -1) throw new Error('Sequence not found');
+
+    const seq = state.sequences[seqIndex];
+    const newStep = {
+      id: `step-${Date.now()}`,
+      stepNumber: seq.steps.length + 1,
+      type: 'email' as const,
+      name: step.name || `Step ${seq.steps.length + 1}`,
+      subject: step.subject || 'Follow-up message',
+      body: step.body || '',
+      delayDays: step.delayDays ?? 3,
+      active: true,
+      replyRate: '0%',
+      channel: 'email' as const,
+      isAvailable: true,
+    };
+    seq.steps.push(newStep);
     state.sequences[seqIndex] = { ...seq };
     this.save(state);
     return seq;
@@ -413,6 +452,98 @@ export class MockApiClient implements ApiClient {
     }
     this.save(state);
     return newProspect;
+  }
+
+  async addManualProspect(data: any): Promise<Prospect> {
+    await delay(300);
+    const state = this.data;
+    const newProspect: Prospect = {
+      id: `pros-${Date.now()}`,
+      companyId: `comp-${Date.now()}`,
+      company: {
+        id: `comp-${Date.now()}`,
+        name: data.companyName,
+        domain: data.domain,
+        industry: data.industry || 'General Business',
+        location: data.location || 'United States',
+        city: '',
+        state: '',
+        country: 'USA',
+        employeeCount: '10-50',
+        websiteUrl: `https://${data.domain}`,
+        websiteQualityScore: data.fitScore || 75,
+        description: data.primaryProblem || 'Manual prospect entry',
+      },
+      contact: {
+        id: `cnt-${Date.now()}`,
+        fullName: data.contactName,
+        firstName: data.contactName.split(' ')[0] || '',
+        lastName: data.contactName.split(' ').slice(1).join(' ') || '',
+        role: data.contactRole || 'Decision Maker',
+        email: data.contactEmail || '',
+        emailVerified: Boolean(data.contactEmail),
+      },
+      fitScore: data.fitScore || 75,
+      fitScoreBreakdown: {
+        businessRelevance: 20,
+        commercialValue: 20,
+        websiteOpportunity: 15,
+        activity: 10,
+        contactability: 5,
+        digitalPresence: 5,
+      },
+      fitLabel: 'Strong fit',
+      primaryProblem: data.primaryProblem || 'Verified commercial outreach target',
+      status: data.campaignId ? 'in_sequence' : 'ready',
+      campaignId: data.campaignId,
+      research: {
+        summary: data.primaryProblem || 'Verified prospect',
+        whyTheyFit: ['Matches workspace criteria'],
+        websiteOpportunities: [],
+        techStack: [],
+        recentSignals: [],
+        suggestedAngle: 'Direct outreach',
+      },
+      generatedEmail: {
+        subject: `Quick note for ${data.companyName}`,
+        body: `Hi ${data.contactName.split(' ')[0]},\n\nReaching out regarding your team at ${data.companyName}.`,
+        personalizations: [],
+        charCount: 80,
+      },
+      activities: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    state.prospects = [newProspect, ...state.prospects];
+    this.save(state);
+    return newProspect;
+  }
+
+  async createSequence(name: string, templateType = 'custom', steps: any[] = []): Promise<Sequence> {
+    await delay(300);
+    const state = this.data;
+    const newSeq: Sequence = {
+      id: `seq-${Date.now()}`,
+      name,
+      templateType: templateType as any,
+      steps: steps.map((s, idx) => ({
+        id: `step-${Date.now()}-${idx}`,
+        stepNumber: idx + 1,
+        type: 'email',
+        name: s.name || `Step ${idx + 1}`,
+        subject: s.subject || '',
+        bodyPreview: (s.body || '').slice(0, 50),
+        body: s.body || '',
+        delayDays: s.delayDays ?? 3,
+        active: true,
+        replyRate: '0%',
+        channel: 'email',
+        isAvailable: true,
+      })),
+    };
+    state.sequences = [newSeq, ...(state.sequences || [])];
+    this.save(state);
+    return newSeq;
   }
 
   async generatePersonalizedEmail(_prospectId: string, _campaignId: string): Promise<any> {

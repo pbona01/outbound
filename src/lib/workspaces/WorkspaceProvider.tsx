@@ -19,12 +19,14 @@ export interface Workspace {
 
 interface WorkspaceContextType {
   workspace: Workspace | null;
+  workspaceId: string | null;
   workspaces: Workspace[];
   isLoading: boolean;
   error: string | null;
   switchWorkspace: (workspaceId: string) => void;
   updateWorkspace: (updates: Partial<Workspace>) => Promise<Workspace | null>;
   createWorkspace: (data: Partial<Workspace>) => Promise<Workspace | null>;
+  refreshWorkspace: () => Promise<void>;
   refreshWorkspaces: () => Promise<void>;
 }
 
@@ -97,9 +99,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         const matched = data.find((w) => w.id === storedId) || data[0];
         setWorkspace(matched);
         localStorage.setItem('outbound_workspace_id', matched.id);
+        localStorage.setItem('outbound_workspace_name', matched.name);
       } else {
         setWorkspaces([]);
         setWorkspace(null);
+        localStorage.removeItem('outbound_workspace_id');
+        localStorage.removeItem('outbound_workspace_name');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load workspaces');
@@ -117,6 +122,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (found) {
       setWorkspace(found);
       localStorage.setItem('outbound_workspace_id', found.id);
+      localStorage.setItem('outbound_workspace_name', found.name);
     }
   };
 
@@ -207,12 +213,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     <WorkspaceContext.Provider
       value={{
         workspace,
+        workspaceId: workspace?.id || null,
         workspaces,
         isLoading,
         error,
         switchWorkspace,
         updateWorkspace,
         createWorkspace,
+        refreshWorkspace: refreshWorkspaces,
         refreshWorkspaces,
       }}
     >
@@ -226,12 +234,14 @@ export function useWorkspace() {
   if (!context) {
     return {
       workspace: MOCK_FALLBACK_WORKSPACE,
+      workspaceId: MOCK_FALLBACK_WORKSPACE.id,
       workspaces: [MOCK_FALLBACK_WORKSPACE],
       isLoading: false,
       error: null,
       switchWorkspace: () => {},
       updateWorkspace: async () => MOCK_FALLBACK_WORKSPACE,
       createWorkspace: async () => MOCK_FALLBACK_WORKSPACE,
+      refreshWorkspace: async () => {},
       refreshWorkspaces: async () => {},
     };
   }

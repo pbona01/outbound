@@ -26,6 +26,7 @@ interface ProspectDrawerProps {
   prospect: Prospect | null;
   onClose: () => void;
   onUpdateProspectStatus?: (prospectId: string, newStatus: Prospect['status']) => void;
+  onAddToCampaign?: (prospectId: string, campaignId: string) => Promise<void>;
   onShowToast: (title: string, description?: string, type?: 'success' | 'info' | 'error') => void;
 }
 
@@ -33,6 +34,7 @@ export function ProspectDrawer({
   prospect,
   onClose,
   onUpdateProspectStatus,
+  onAddToCampaign,
   onShowToast,
 }: ProspectDrawerProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'research' | 'email' | 'activity'>('research');
@@ -303,18 +305,22 @@ Happy to send over the Figma mockup if you'd like to take a look.
                   <span className="text-[12px] font-semibold text-[#686868] uppercase tracking-wider">
                     Primary Decision Maker
                   </span>
-                  {prospect.contact.emailVerified && (
+                  {prospect.contact.email && prospect.contact.emailVerified ? (
                     <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3" />
                       Verified Deliverable
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-medium text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-md">
+                      Unverified
                     </span>
                   )}
                 </div>
 
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center font-medium text-stone-700 text-sm">
-                    {prospect.contact.firstName[0]}
-                    {prospect.contact.lastName[0]}
+                    {prospect.contact.firstName[0] || 'C'}
+                    {prospect.contact.lastName[0] || 'P'}
                   </div>
                   <div>
                     <h3 className="text-[14px] font-semibold text-[#111111]">{prospect.contact.fullName}</h3>
@@ -325,7 +331,11 @@ Happy to send over the Figma mockup if you'd like to take a look.
                 <div className="space-y-2 pt-2 border-t border-black/[0.04] text-[13px]">
                   <div className="flex items-center gap-2 text-[#111111]">
                     <Mail className="w-3.5 h-3.5 text-[#949494] shrink-0" />
-                    <span className="font-mono text-[12px] select-all">{prospect.contact.email}</span>
+                    {prospect.contact.email ? (
+                      <span className="font-mono text-[12px] select-all">{prospect.contact.email}</span>
+                    ) : (
+                      <span className="text-[12px] text-[#949494] italic">No verified email on file</span>
+                    )}
                   </div>
                   {prospect.contact.phone && (
                     <div className="flex items-center gap-2 text-[#111111]">

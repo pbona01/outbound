@@ -1,11 +1,12 @@
 import { ApiClient } from './types';
 import { MockApiClient } from './mockApi';
 import { SupabaseApiClient } from './supabaseApi';
+import { isSupabaseConfigured } from '../supabase';
 
-let client: ApiClient;
+let client: ApiClient | null = null;
 
 export function getApiClient(): ApiClient {
-  const useMock = import.meta.env.VITE_USE_MOCK_API === 'true';
+  const useMock = import.meta.env.VITE_USE_MOCK_API === 'true' || !isSupabaseConfigured;
 
   if (!client) {
     if (useMock) {
@@ -16,3 +17,4 @@ export function getApiClient(): ApiClient {
   }
   return client;
 }
+

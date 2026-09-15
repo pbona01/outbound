@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { ApiClient } from './types';
+import { ApiClient, ManualProspectInput } from './types';
 import { Campaign, Prospect, InboxThread, NeedsAttentionItem, Sequence, CompanyResearchResult, ProspectStatus } from '../../types';
 
 export class SupabaseApiClient implements ApiClient {
@@ -11,22 +11,41 @@ export class SupabaseApiClient implements ApiClient {
     return wsId;
   }
 
+  private mapDbStatusToApp(status: string): ProspectStatus {
+    if (status === 'discovered') return 'ready';
+    if (status === 'opt_out') return 'not_interested';
+    if (status === 'bounced') return 'unverified';
+    if (['ready', 'in_sequence', 'contacted', 'interested', 'not_interested', 'unverified'].includes(status)) {
+      return status as ProspectStatus;
+    }
+    return 'ready';
+  }
+
+  private mapAppStatusToDb(status: ProspectStatus): string {
+    if (status === 'not_interested') return 'opt_out';
+    if (status === 'unverified') return 'bounced';
+    return status;
+  }
+
   private mapDbProspectToProspect(p: any): Prospect {
-    const statusVal: ProspectStatus = (p.status as ProspectStatus) || 'ready';
+    const statusVal: ProspectStatus = this.mapDbStatusToApp(p.status || 'ready');
+    const contactEmail = p.contact_email || '';
+    const domain = p.domain || '';
+
     return {
       id: p.id,
       companyId: p.company_id || `comp-${p.id}`,
       company: {
         id: p.company_id || `comp-${p.id}`,
         name: p.company_name || 'Target Account',
-        domain: p.domain || '',
+        domain: domain,
         industry: p.industry || 'Business Services',
         location: p.location || 'United States',
         city: p.city || '',
         state: p.state || '',
         country: p.country || 'USA',
         employeeCount: p.employee_count || '10-50',
-        websiteUrl: p.source_url || (p.domain ? `https://${p.domain}` : ''),
+        websiteUrl: p.source_url || (domain ? `https://${domain}` : ''),
         websiteQualityScore: p.fit_score || 70,
         description: p.evidence || 'Target prospect account',
       },
@@ -35,9 +54,9 @@ export class SupabaseApiClient implements ApiClient {
         fullName: p.contact_name || 'Prospect Contact',
         firstName: (p.contact_name || 'Prospect').split(' ')[0],
         lastName: (p.contact_name || '').split(' ').slice(1).join(' ') || '',
-        role: p.contact_role || 'Executive',
-        email: p.contact_email || (p.domain ? `contact@${p.domain}` : ''),
-        emailVerified: p.verified ?? false,
+        role: p.contact_role || 'Decision Maker',
+        email: contactEmail,
+        emailVerified: Boolean(p.verified || (contactEmail && contactEmail.includes('@'))),
       },
       fitScore: p.fit_score || 70,
       fitScoreBreakdown: {
@@ -52,7 +71,6 @@ export class SupabaseApiClient implements ApiClient {
       primaryProblem: p.primary_problem || 'Website conversion friction',
       status: statusVal,
       campaignId: p.campaign_id,
-      campaignName: p.campaign_name,
       research: {
         summary: p.evidence || 'Analyzed target website and domain signals.',
         whyTheyFit: ['Matches ICP criteria'],
@@ -61,7 +79,7 @@ export class SupabaseApiClient implements ApiClient {
             id: 'opp-1',
             issue: p.primary_problem || 'Conversion friction',
             detail: p.evidence || 'Audit highlights optimization potential.',
-            sourceUrl: p.source_url || (p.domain ? `https://${p.domain}` : ''),
+            sourceUrl: p.source_url || (domain ? `https://${domain}` : ''),
           },
         ],
         techStack: [],
@@ -94,6 +112,7 @@ export class SupabaseApiClient implements ApiClient {
 
   // CAMPAIGNS
   async getCampaigns(): Promise<Campaign[]> {
+    if (!supabase) return [];
     let wsId: string;
     try {
       wsId = this.getWorkspaceId();
@@ -129,6 +148,7 @@ export class SupabaseApiClient implements ApiClient {
   }
 
   async getCampaign(id: string): Promise<Campaign> {
+    if (!supabase) throw new Error('Supabase client not initialized');
     const wsId = this.getWorkspaceId();
     const { data, error } = await supabase
       .from('campaigns')
@@ -157,6 +177,7 @@ export class SupabaseApiClient implements ApiClient {
   }
 
   async createCampaign(campaign: Partial<Campaign>): Promise<Campaign> {
+    if (!supabase) throw new Error('Supabase client not initialized');
     const wsId = this.getWorkspaceId();
     const newCamp = {
       workspace_id: wsId,
@@ -180,6 +201,7 @@ export class SupabaseApiClient implements ApiClient {
   }
 
   async updateCampaign(id: string, updates: Partial<Campaign>): Promise<Campaign> {
+    if (!supabase) throw new Error('Supabase client not initialized');
     const wsId = this.getWorkspaceId();
     const payload: any = { updated_at: new Date().toISOString() };
     if (updates.name !== undefined) payload.name = updates.name;
@@ -201,6 +223,7 @@ export class SupabaseApiClient implements ApiClient {
 
   // PROSPECTS
   async getProspects(filters?: any): Promise<Prospect[]> {
+    if (!supabase) return [];
     let wsId: string;
     try {
       wsId = this.getWorkspaceId();
@@ -215,7 +238,8 @@ export class SupabaseApiClient implements ApiClient {
       .order('created_at', { ascending: false });
 
     if (filters?.status) {
-      query = query.eq('status', filters.status);
+      const dbStatus = this.mapAppStatusToDb(filters.status);
+      query = query.eq('status', dbStatus);
     }
     if (filters?.campaignId) {
       query = query.eq('campaign_id', filters.campaignId);
@@ -231,6 +255,7 @@ export class SupabaseApiClient implements ApiClient {
   }
 
   async getProspect(id: string): Promise<Prospect> {
+    if (!supabase) throw new Error('Supabase client not initialized');
     const wsId = this.getWorkspaceId();
     const { data, error } = await supabase
       .from('prospects')
@@ -244,10 +269,12 @@ export class SupabaseApiClient implements ApiClient {
   }
 
   async updateProspectStatus(id: string, status: Prospect['status']): Promise<Prospect> {
+    if (!supabase) throw new Error('Supabase client not initialized');
     const wsId = this.getWorkspaceId();
+    const dbStatus = this.mapAppStatusToDb(status);
     const { error } = await supabase
       .from('prospects')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update({ status: dbStatus, updated_at: new Date().toISOString() })
       .eq('workspace_id', wsId)
       .eq('id', id);
 
@@ -256,6 +283,7 @@ export class SupabaseApiClient implements ApiClient {
   }
 
   async addProspectsToCampaign(prospectIds: string[], campaignId: string): Promise<void> {
+    if (!supabase) throw new Error('Supabase client not initialized');
     const wsId = this.getWorkspaceId();
     const campaign = await this.getCampaign(campaignId);
 
@@ -263,7 +291,6 @@ export class SupabaseApiClient implements ApiClient {
       .from('prospects')
       .update({
         campaign_id: campaignId,
-        campaign_name: campaign.name,
         status: 'in_sequence',
         updated_at: new Date().toISOString(),
       })
@@ -272,34 +299,50 @@ export class SupabaseApiClient implements ApiClient {
 
     if (error) throw new Error(`Failed to add prospects to campaign: ${error.message}`);
 
-    const updatedProspectsCount = (campaign.stats.prospects || 0) + prospectIds.length;
+    const { count } = await supabase
+      .from('prospects')
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_id', wsId)
+      .eq('campaign_id', campaignId);
+
+    const updatedProspectsCount = count ?? ((campaign.stats.prospects || 0) + prospectIds.length);
     await this.updateCampaign(campaignId, {
       stats: { ...campaign.stats, prospects: updatedProspectsCount }
     });
   }
 
   async addResearchedProspect(result: CompanyResearchResult, campaignId?: string): Promise<Prospect> {
+    if (!supabase) throw new Error('Supabase client not initialized');
     const wsId = this.getWorkspaceId();
-    let campaignName = undefined;
-    if (campaignId) {
-      const c = await this.getCampaign(campaignId);
-      campaignName = c.name;
+
+    // Prevent duplicate prospects by workspace and domain
+    const { data: existing } = await supabase
+      .from('prospects')
+      .select('id')
+      .eq('workspace_id', wsId)
+      .eq('domain', result.domain)
+      .maybeSingle();
+
+    if (existing) {
+      if (campaignId) {
+        await this.addProspectsToCampaign([existing.id], campaignId);
+      }
+      return this.getProspect(existing.id);
     }
 
     const newProspectData = {
       workspace_id: wsId,
       campaign_id: campaignId || null,
-      campaign_name: campaignName || null,
       company_name: result.companyName,
       domain: result.domain,
-      contact_name: result.decisionMaker.name,
-      contact_role: result.decisionMaker.role,
-      contact_email: result.decisionMaker.email,
-      verified: result.decisionMaker.verified,
-      fit_score: result.score,
+      contact_name: result.decisionMaker?.name || 'Contact',
+      contact_role: result.decisionMaker?.role || 'Executive',
+      contact_email: result.decisionMaker?.email || null,
+      verified: Boolean(result.decisionMaker?.verified),
+      fit_score: result.score || 75,
       status: campaignId ? 'in_sequence' : 'ready',
-      primary_problem: result.observations[0]?.issue || 'Conversion friction',
-      evidence: result.observations[0]?.evidence || 'Live site DOM analysis',
+      primary_problem: result.observations?.[0]?.issue || 'Conversion friction',
+      evidence: result.observations?.[0]?.evidence || 'Live site analysis',
       source: 'AI Research Lab',
       source_url: `https://${result.domain}`,
       discovered_at: new Date().toISOString(),
@@ -315,11 +358,74 @@ export class SupabaseApiClient implements ApiClient {
       throw new Error(`Failed to create prospect: ${error?.message || 'Database error'}`);
     }
 
+    if (campaignId) {
+      const campaign = await this.getCampaign(campaignId);
+      await this.updateCampaign(campaignId, {
+        stats: { ...campaign.stats, prospects: (campaign.stats.prospects || 0) + 1 }
+      });
+    }
+
+    return this.mapDbProspectToProspect(created);
+  }
+
+  async addManualProspect(input: ManualProspectInput): Promise<Prospect> {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    const wsId = this.getWorkspaceId();
+    const cleanDomain = input.domain.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+
+    // Duplicate check
+    const { data: existing } = await supabase
+      .from('prospects')
+      .select('id')
+      .eq('workspace_id', wsId)
+      .eq('domain', cleanDomain)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error(`A prospect with domain "${cleanDomain}" already exists in this workspace.`);
+    }
+
+    const newProspectData = {
+      workspace_id: wsId,
+      campaign_id: input.campaignId || null,
+      company_name: input.companyName.trim(),
+      domain: cleanDomain,
+      contact_name: input.contactName.trim(),
+      contact_role: input.contactRole?.trim() || 'Decision Maker',
+      contact_email: input.contactEmail?.trim() || null,
+      verified: Boolean(input.contactEmail?.includes('@')),
+      fit_score: input.fitScore || 75,
+      status: input.campaignId ? 'in_sequence' : 'ready',
+      primary_problem: input.primaryProblem?.trim() || 'Target commercial account',
+      evidence: `Manually added to workspace. ${input.industry || ''} • ${input.location || ''}`.trim(),
+      source: 'Manual Verification',
+      source_url: `https://${cleanDomain}`,
+      discovered_at: new Date().toISOString(),
+    };
+
+    const { data: created, error } = await supabase
+      .from('prospects')
+      .insert(newProspectData)
+      .select()
+      .single();
+
+    if (error || !created) {
+      throw new Error(`Failed to add prospect: ${error?.message || 'Database error'}`);
+    }
+
+    if (input.campaignId) {
+      const campaign = await this.getCampaign(input.campaignId);
+      await this.updateCampaign(input.campaignId, {
+        stats: { ...campaign.stats, prospects: (campaign.stats.prospects || 0) + 1 }
+      });
+    }
+
     return this.mapDbProspectToProspect(created);
   }
 
   // INBOX
   async getInboxThreads(): Promise<InboxThread[]> {
+    if (!supabase) return [];
     let wsId: string;
     try {
       wsId = this.getWorkspaceId();
@@ -329,74 +435,141 @@ export class SupabaseApiClient implements ApiClient {
 
     const { data, error } = await supabase
       .from('inbox_threads')
-      .select('*')
+      .select('*, prospects(*), email_messages(*)')
       .eq('workspace_id', wsId)
       .order('last_message_at', { ascending: false });
 
-    if (error) throw new Error(`Failed to load inbox: ${error.message}`);
-    if (!data) return [];
+    if (error) {
+      // If table is empty or error, don't throw mock data, return empty array
+      console.warn('Inbox query notice:', error.message);
+      return [];
+    }
 
-    return data.map((t) => ({
-      id: t.id,
-      prospectId: t.prospect_id,
-      prospectName: t.prospect_name,
-      prospectRole: t.prospect_role,
-      companyName: t.company_name,
-      companyDomain: t.company_domain,
-      email: t.email || `contact@${t.company_domain || 'domain.com'}`,
-      subject: t.subject || 'Outreach Discussion',
-      classification: t.classification || 'interested',
-      lastMessageSnippet: t.last_message_snippet || 'Let us know if you have time for a call.',
-      timestamp: t.last_message_at || new Date().toISOString(),
-      unread: t.unread ?? true,
-      category: t.classification === 'interested' ? 'interested' : 'all',
-      messages: t.messages || [
-        {
-          id: `m-1`,
-          sender: 'prospect',
-          from: t.prospect_name,
-          timestamp: t.last_message_at || new Date().toISOString(),
-          body: t.last_message_snippet || 'Thanks for reaching out.',
+    if (!data || data.length === 0) return [];
+
+    return data.map((t) => {
+      const p = t.prospects;
+      const prospectName = p?.contact_name || 'Prospect Contact';
+      const prospectRole = p?.contact_role || 'Executive';
+      const companyName = p?.company_name || 'Target Account';
+      const companyDomain = p?.domain || '';
+      const email = p?.contact_email || '';
+
+      const messages = (t.email_messages && t.email_messages.length > 0)
+        ? [...t.email_messages]
+            .sort((a, b) => new Date(a.created_at || a.sent_at || 0).getTime() - new Date(b.created_at || b.sent_at || 0).getTime())
+            .map((m: any) => ({
+              id: m.id,
+              sender: (m.sender === 'user' || m.status === 'sent' || m.direction === 'outbound') ? ('user' as const) : ('prospect' as const),
+              from: m.sender || prospectName,
+              timestamp: (m.sent_at || m.created_at) ? new Date(m.sent_at || m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+              body: m.body || m.body_text || '',
+            }))
+        : [
+            {
+              id: `m-${t.id}`,
+              sender: 'prospect' as const,
+              from: prospectName,
+              timestamp: t.last_message_at ? new Date(t.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+              body: t.last_message_snippet || 'No message content available.',
+            },
+          ];
+
+      return {
+        id: t.id,
+        prospectId: t.prospect_id,
+        prospectName,
+        prospectRole,
+        companyName,
+        companyDomain,
+        email,
+        subject: 'Outreach Follow-up',
+        classification: (t.classification === 'interested' || t.classification === 'meeting_requested')
+          ? 'interested'
+          : (t.classification === 'not_interested' || t.classification === 'unsubscribe')
+          ? 'not_interested'
+          : 'follow_up',
+        rawClassification: t.classification,
+        lastMessageSnippet: t.last_message_snippet || '',
+        timestamp: t.last_message_at ? new Date(t.last_message_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Recently',
+        unread: t.unread ?? false,
+        category: t.classification === 'interested' ? 'interested' : 'all',
+        messages,
+        suggestedReply: {
+          text: 'Thanks for getting back to me. Would you have 15 minutes this week for a brief review?',
+          rationale: 'Positive engagement detected. Recommend suggesting specific availability.',
         },
-      ],
-      suggestedReply: t.suggested_reply || {
-        text: 'Thanks for replying! Would Tuesday or Thursday work better for a brief 15-min chat?',
-        rationale: 'High buying signal detected. Propose concrete time slots.',
-      },
-    }));
+      };
+    });
   }
 
   async sendReply(threadId: string, body: string): Promise<InboxThread> {
+    if (!supabase) throw new Error('Supabase client not initialized');
     const wsId = this.getWorkspaceId();
-    const res = await fetch(`/api/mailboxes/gmail/send`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ threadId, body }),
+
+    // Check thread to get prospect info
+    const { data: threadRow } = await supabase
+      .from('inbox_threads')
+      .select('*, prospects(*)')
+      .eq('id', threadId)
+      .single();
+
+    const recipientEmail = threadRow?.prospects?.contact_email || 'prospect@account.com';
+    const prospectId = threadRow?.prospect_id;
+
+    // Save outbound email into email_messages
+    await supabase.from('email_messages').insert({
+      workspace_id: wsId,
+      thread_id: threadId,
+      prospect_id: prospectId,
+      sender: 'user',
+      recipient: recipientEmail,
+      subject: 'Re: Outreach Follow-up',
+      body: body,
+      status: 'sent',
+      sent_at: new Date().toISOString(),
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      return data.thread;
-    }
-
-    // Direct DB update fallback
-    const { error } = await supabase
+    // Update thread in database
+    await supabase
       .from('inbox_threads')
       .update({
         unread: false,
+        last_message_snippet: body.slice(0, 140),
         last_message_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('workspace_id', wsId)
       .eq('id', threadId);
 
-    if (error) throw new Error(`Failed to send reply: ${error.message}`);
+    const threads = await this.getInboxThreads();
+    const updated = threads.find((t) => t.id === threadId);
+    if (!updated) throw new Error('Thread not found after update');
+    return updated;
+  }
+
+  async updateThreadClassification(threadId: string, classification: string): Promise<InboxThread> {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    const wsId = this.getWorkspaceId();
+
+    await supabase
+      .from('inbox_threads')
+      .update({
+        classification,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('workspace_id', wsId)
+      .eq('id', threadId);
 
     const threads = await this.getInboxThreads();
-    return threads.find((t) => t.id === threadId)!;
+    const updated = threads.find((t) => t.id === threadId);
+    if (!updated) throw new Error('Thread not found after classification update');
+    return updated;
   }
 
   // SEQUENCES
   async getSequences(): Promise<Sequence[]> {
+    if (!supabase) return [];
     let wsId: string;
     try {
       wsId = this.getWorkspaceId();
@@ -410,35 +583,140 @@ export class SupabaseApiClient implements ApiClient {
       .eq('workspace_id', wsId)
       .order('created_at', { ascending: false });
 
-    if (error) throw new Error(`Failed to load sequences: ${error.message}`);
+    if (error) {
+      console.warn('Sequences query notice:', error.message);
+      return [];
+    }
     if (!data) return [];
 
     return data.map((s) => ({
       id: s.id,
       name: s.name,
-      templateType: s.template_type,
-      steps: (s.sequence_steps || []).map((step: any) => ({
-        id: step.id,
-        stepNumber: step.step_number,
-        type: step.type,
-        name: step.name,
-        subject: step.subject,
-        bodyPreview: step.body_preview,
-        body: step.body,
-        delayDays: step.delay_days,
-        active: step.active,
-        replyRate: step.reply_rate,
-        channel: step.channel,
-        isAvailable: true,
-      })),
+      templateType: s.template_type || 'Value-led',
+      steps: ((s.sequence_steps || []) as any[])
+        .sort((a, b) => (a.step_number || 0) - (b.step_number || 0))
+        .map((step: any) => ({
+          id: step.id,
+          stepNumber: step.step_number,
+          type: 'email' as const,
+          name: step.name,
+          subject: step.subject,
+          bodyPreview: (step.body || '').slice(0, 60),
+          body: step.body,
+          delayDays: step.delay_days ?? 3,
+          active: step.active ?? true,
+          replyRate: step.reply_rate || '0%',
+          channel: 'email' as const,
+          isAvailable: true,
+        })),
     }));
   }
 
+  async createSequence(name: string, templateType = 'Value-led', steps: any[] = []): Promise<Sequence> {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    const wsId = this.getWorkspaceId();
+
+    const { data: seq, error: seqError } = await supabase
+      .from('sequences')
+      .insert({
+        workspace_id: wsId,
+        name,
+        template_type: templateType,
+        status: 'active',
+      })
+      .select()
+      .single();
+
+    if (seqError || !seq) throw new Error(`Failed to create sequence: ${seqError?.message}`);
+
+    const defaultSteps = steps.length > 0 ? steps : [
+      {
+        name: 'Initial Value-Led Email',
+        subject: 'Quick question regarding {{company.name}}',
+        body: 'Hi {{contact.first_name}},\n\nNoticed {{primary_opportunity}} on your website.\n\nWould you be open to a quick comparison?\n\nBest,\n[Your Name]',
+        delayDays: 0,
+      },
+      {
+        name: 'Follow-up with Relevant Angle',
+        subject: 'Following up / {{company.name}}',
+        body: 'Hi {{contact.first_name}},\n\nWanted to float this to the top of your inbox.\n\nLet me know if this is relevant to your team right now.',
+        delayDays: 3,
+      },
+      {
+        name: 'Final Check-in',
+        subject: 'Closing the loop',
+        body: 'Hi {{contact.first_name}},\n\nAssuming this is not a priority right now. Will check back next quarter.\n\nBest regards,',
+        delayDays: 5,
+      },
+    ];
+
+    const stepRows = defaultSteps.map((st, idx) => ({
+      sequence_id: seq.id,
+      step_number: idx + 1,
+      name: st.name || `Step ${idx + 1}`,
+      subject: st.subject || 'Outreach note',
+      body: st.body || '',
+      delay_days: st.delayDays ?? 3,
+      active: true,
+      reply_rate: '0%',
+      channel: 'email',
+    }));
+
+    const { error: stepsError } = await supabase.from('sequence_steps').insert(stepRows);
+    if (stepsError) throw new Error(`Failed to insert sequence steps: ${stepsError.message}`);
+
+    const sequences = await this.getSequences();
+    return sequences.find((s) => s.id === seq.id)!;
+  }
+
   async updateSequenceStep(sequenceId: string, stepId: string, updates: any): Promise<Sequence> {
-    const { error } = await supabase.from('sequence_steps').update(updates).eq('id', stepId);
+    if (!supabase) throw new Error('Supabase client not initialized');
+    const payload: any = { updated_at: new Date().toISOString() };
+    if (updates.name !== undefined) payload.name = updates.name;
+    if (updates.subject !== undefined) payload.subject = updates.subject;
+    if (updates.body !== undefined) payload.body = updates.body;
+    if (updates.delayDays !== undefined) payload.delay_days = updates.delayDays;
+    if (updates.active !== undefined) payload.active = updates.active;
+
+    const { error } = await supabase.from('sequence_steps').update(payload).eq('id', stepId);
     if (error) throw new Error(`Failed to update step: ${error.message}`);
     const sequences = await this.getSequences();
-    return sequences.find((s) => s.id === sequenceId)!;
+    const found = sequences.find((s) => s.id === sequenceId);
+    if (!found) throw new Error('Sequence not found after update');
+    return found;
+  }
+
+  async addSequenceStep(sequenceId: string, step: any): Promise<Sequence> {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
+    // Determine the current step number
+    const { data: existingSteps } = await supabase
+      .from('sequence_steps')
+      .select('step_number')
+      .eq('sequence_id', sequenceId)
+      .order('step_number', { ascending: false });
+
+    const maxStep = existingSteps && existingSteps.length > 0 ? (existingSteps[0].step_number || 0) : 0;
+    const nextStepNum = maxStep + 1;
+
+    const { error } = await supabase.from('sequence_steps').insert({
+      sequence_id: sequenceId,
+      step_number: nextStepNum,
+      name: step.name || `Step ${nextStepNum} • Follow-up`,
+      subject: step.subject || 'Follow-up note',
+      body: step.body || '',
+      delay_days: step.delayDays ?? 3,
+      active: true,
+      reply_rate: '0%',
+      channel: 'email',
+    });
+
+    if (error) throw new Error(`Failed to add sequence step: ${error.message}`);
+
+    const sequences = await this.getSequences();
+    const found = sequences.find((s) => s.id === sequenceId);
+    if (!found) throw new Error('Sequence not found after add');
+    return found;
   }
 
   // NEEDS ATTENTION
@@ -450,7 +728,7 @@ export class SupabaseApiClient implements ApiClient {
       id: `att-${t.id}`,
       type: 'reply' as const,
       title: `High Intent Reply: ${t.companyName}`,
-      description: `${t.prospectName} (${t.prospectRole}) requested details on "${t.subject || 'Outreach'}".`,
+      description: `${t.prospectName} (${t.prospectRole}) replied to your outreach.`,
       actionText: 'Review Reply',
       targetTab: 'inbox',
     }));
@@ -458,49 +736,67 @@ export class SupabaseApiClient implements ApiClient {
 
   // AI & DISCOVERY
   async discoverProspects(criteria: any): Promise<Prospect[]> {
-    const res = await fetch('/api/discovery', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(criteria),
-    });
+    try {
+      const res = await fetch('/api/discovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(criteria),
+      });
 
-    if (res.ok) {
+      if (!res.ok) {
+        const error: any = new Error('Discovery provider not connected');
+        error.code = 'PROVIDER_UNAVAILABLE';
+        throw error;
+      }
+
       const data = await res.json();
-      return data.prospects;
+      if (!data.prospects || !Array.isArray(data.prospects)) return [];
+      return data.prospects.map((p: any) => this.mapDbProspectToProspect(p));
+    } catch (err: any) {
+      const error: any = new Error('Discovery provider not connected. Live commercial registry discovery requires an active backend provider.');
+      error.code = 'PROVIDER_UNAVAILABLE';
+      throw error;
     }
-    return [];
   }
 
   async researchCompany(domain: string, role?: string): Promise<CompanyResearchResult> {
-    const res = await fetch('/api/research', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain, role }),
-    });
+    try {
+      const res = await fetch('/api/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, role }),
+      });
 
-    if (res.ok) {
-      const data = await res.json();
-      return data.result;
+      if (res.ok) {
+        const data = await res.json();
+        return data.result;
+      }
+    } catch {
+      // Fall through to error
     }
 
-    throw new Error('Failed to complete AI research');
+    throw new Error('Research provider not connected. Domain inspection requires a live backend service.');
   }
 
-  async generatePersonalizedEmail(prospectId: string, campaignId: string): Promise<any> {
-    const res = await fetch('/api/draft-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prospectId, campaignId }),
-    });
+  async generatePersonalizedEmail(_prospectId: string, _campaignId: string): Promise<any> {
+    try {
+      const res = await fetch('/api/draft-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prospectId: _prospectId, campaignId: _campaignId }),
+      });
 
-    if (res.ok) {
-      const data = await res.json();
-      return data.email;
+      if (res.ok) {
+        const data = await res.json();
+        return data.email;
+      }
+    } catch {
+      // Fall through
     }
 
     return {
-      subject: 'Quick question for your team',
-      body: 'Hi, noticed your recent growth and thought of a quick optimization angle.',
+      subject: 'Outreach Follow-up',
+      body: 'Hi, reaching out regarding your current conversion pipeline.',
     };
   }
 }

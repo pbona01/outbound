@@ -36,18 +36,18 @@ export function OverviewView() {
   const workspaceName = workspace?.name || 'My Workspace';
 
   const onCreateCampaign = () => setIsCampaignWizardOpen(true);
-  const onSelectCampaign = (campaign: Campaign) => navigate('/app/campaigns');
-  const onNavigateTab = (tab: string) => navigate(`/app/${tab}`);
+  const onSelectCampaign = (campaign: Campaign) => navigate(`/campaigns/${campaign.id}`);
+  const onNavigateTab = (tab: string) => navigate(`/${tab}`);
 
   const [activeMetric, setActiveMetric] = useState<'sent' | 'replies' | 'positive' | 'meetings'>('replies');
   const [dateRange, setDateRange] = useState<'7D' | '30D' | '90D'>('30D');
   const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
 
   // Real aggregations calculated directly from AppState without fake numbers
-  const totalSent = campaigns.reduce((acc, c) => acc + (c.stats.sent || 0), 0);
-  const totalReplies = campaigns.reduce((acc, c) => acc + (c.stats.replies || 0), 0);
-  const totalPositive = campaigns.reduce((acc, c) => acc + (c.stats.positiveReplies || 0), 0);
-  const totalMeetings = campaigns.reduce((acc, c) => acc + (c.stats.meetings || 0), 0);
+  const totalSent = campaigns.reduce((acc, c) => acc + (c.stats?.sent ?? 0), 0);
+  const totalReplies = campaigns.reduce((acc, c) => acc + (c.stats?.replies ?? 0), 0);
+  const totalPositive = campaigns.reduce((acc, c) => acc + (c.stats?.positiveReplies ?? 0), 0);
+  const totalMeetings = campaigns.reduce((acc, c) => acc + (c.stats?.meetings ?? 0), 0);
   const totalResearched = prospects.length;
 
   const hasRealActivity = totalSent > 0 || totalReplies > 0 || totalResearched > 0;
@@ -320,11 +320,11 @@ export function OverviewView() {
                     >
                       <td className="py-3 font-medium text-[#111111]">{camp.name}</td>
                       <td className="py-3 text-[#686868]">{camp.targetIndustry}</td>
-                      <td className="py-3 text-center tnum">{camp.stats.prospects}</td>
-                      <td className="py-3 text-center tnum">{camp.stats.sent}</td>
-                      <td className="py-3 text-center tnum font-medium text-[#111111]">{camp.stats.replies}</td>
+                      <td className="py-3 text-center tnum">{camp.stats?.prospects ?? 0}</td>
+                      <td className="py-3 text-center tnum">{camp.stats?.sent ?? 0}</td>
+                      <td className="py-3 text-center tnum font-medium text-[#111111]">{camp.stats?.replies ?? 0}</td>
                       <td className="py-3 text-center tnum font-semibold text-emerald-700">
-                        {camp.stats.positiveReplies}
+                        {camp.stats?.positiveReplies ?? 0}
                       </td>
                       <td className="py-3 text-right">
                         <span

@@ -53,12 +53,21 @@ export function CampaignDetailView() {
     (p) => p.campaignId === campaign.id || p.campaignName === campaign.name
   );
 
+  const stats = campaign.stats || {
+    prospects: 0,
+    contacted: 0,
+    sent: 0,
+    replies: 0,
+    positiveReplies: 0,
+    meetings: 0,
+  };
+
   const funnelSteps = [
-    { label: 'Prospects', value: campaign.stats.prospects, desc: 'Researched & Verified' },
-    { label: 'Contacted', value: campaign.stats.contacted, desc: 'Step 1 Dispatched' },
-    { label: 'Replies', value: campaign.stats.replies, desc: 'Direct Responses' },
-    { label: 'Interested', value: campaign.stats.positiveReplies, desc: 'Positive Intent' },
-    { label: 'Meetings', value: campaign.stats.meetings, desc: 'Calls Scheduled' },
+    { label: 'Prospects', value: stats.prospects ?? 0, desc: 'Researched & Verified' },
+    { label: 'Contacted', value: stats.contacted ?? 0, desc: 'Step 1 Dispatched' },
+    { label: 'Replies', value: stats.replies ?? 0, desc: 'Direct Responses' },
+    { label: 'Interested', value: stats.positiveReplies ?? 0, desc: 'Positive Intent' },
+    { label: 'Meetings', value: stats.meetings ?? 0, desc: 'Calls Scheduled' },
   ];
 
   return (
@@ -119,11 +128,11 @@ export function CampaignDetailView() {
       {/* Campaign Primary Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { label: 'Prospects', value: campaign.stats.prospects, icon: Users },
-          { label: 'Sent', value: campaign.stats.sent, icon: Send },
-          { label: 'Replies', value: campaign.stats.replies, icon: MessageSquare },
-          { label: 'Positive', value: campaign.stats.positiveReplies, icon: CheckCircle2 },
-          { label: 'Meetings', value: campaign.stats.meetings, icon: Calendar },
+          { label: 'Prospects', value: stats.prospects ?? 0, icon: Users },
+          { label: 'Sent', value: stats.sent ?? 0, icon: Send },
+          { label: 'Replies', value: stats.replies ?? 0, icon: MessageSquare },
+          { label: 'Positive', value: stats.positiveReplies ?? 0, icon: CheckCircle2 },
+          { label: 'Meetings', value: stats.meetings ?? 0, icon: Calendar },
         ].map((m, idx) => (
           <div key={idx} className="p-4 rounded-xl bg-white border border-black/[0.07] space-y-1">
             <span className="text-[12px] font-medium text-[#686868] flex items-center gap-1.5">
@@ -217,24 +226,24 @@ export function CampaignDetailView() {
                 <div className="flex justify-between py-1 border-b border-black/[0.04]">
                   <span className="text-[#686868]">Reply Rate:</span>
                   <span className="font-semibold text-emerald-700 tnum">
-                    {campaign.stats.sent > 0
-                      ? `${((campaign.stats.replies / campaign.stats.sent) * 100).toFixed(1)}%`
+                    {(stats.sent ?? 0) > 0
+                      ? `${(((stats.replies ?? 0) / stats.sent) * 100).toFixed(1)}%`
                       : '0.0%'}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-black/[0.04]">
                   <span className="text-[#686868]">Positive Intent Rate:</span>
                   <span className="font-semibold text-emerald-700 tnum">
-                    {campaign.stats.sent > 0
-                      ? `${((campaign.stats.positiveReplies / campaign.stats.sent) * 100).toFixed(1)}%`
+                    {(stats.sent ?? 0) > 0
+                      ? `${(((stats.positiveReplies ?? 0) / stats.sent) * 100).toFixed(1)}%`
                       : '0.0%'}
                   </span>
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-[#686868]">Meeting Booking Rate:</span>
                   <span className="font-semibold text-[#3157FF] tnum">
-                    {campaign.stats.sent > 0
-                      ? `${((campaign.stats.meetings / campaign.stats.sent) * 100).toFixed(1)}%`
+                    {(stats.sent ?? 0) > 0
+                      ? `${(((stats.meetings ?? 0) / stats.sent) * 100).toFixed(1)}%`
                       : '0.0%'}
                   </span>
                 </div>

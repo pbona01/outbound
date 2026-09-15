@@ -20,18 +20,20 @@ import {
 import { useAppState } from '../../lib/state/AppStateContext';
 import { useToast } from '../../lib/state/ToastContext';
 import { useAuth } from '../../lib/auth/AuthProvider';
+import { useWorkspace } from '../../lib/workspaces/WorkspaceProvider';
 import { CommandPalette } from '../common/CommandPalette';
 import { CampaignWizard } from '../campaigns/CampaignWizard';
 import { ProspectDrawer } from '../prospects/ProspectDrawer';
 
 export function AppLayout() {
   const location = useLocation();
-  const { campaigns, prospects, inboxThreads, updateProspectStatus, addCampaign } = useAppState();
+  const { campaigns, prospects, inboxThreads, updateProspectStatus, addProspectsToCampaign, addCampaign } = useAppState();
   const { user, configured, signOut } = useAuth();
+  const { workspace, workspaces, switchWorkspace } = useWorkspace();
   const { showToast } = useToast();
   const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Your workspace';
   const displayEmail = user?.email || 'Connect Supabase to enable your account';
-  const workspaceName = user?.user_metadata?.workspace_name || (configured ? 'Your workspace' : 'GrowthStudio');
+  const workspaceName = workspace?.name || user?.user_metadata?.workspace_name || (configured ? 'Your workspace' : 'GrowthStudio');
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -258,6 +260,9 @@ export function AppLayout() {
         prospect={selectedProspect}
         onClose={() => setSelectedProspectId(null)}
         onUpdateProspectStatus={updateProspectStatus}
+        onAddToCampaign={async (pId, cId) => {
+          await addProspectsToCampaign([pId], cId);
+        }}
         onShowToast={showToast}
       />
 
