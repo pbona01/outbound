@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Campaign, Prospect, InboxThread, NeedsAttentionItem, Sequence, CompanyResearchResult } from '../../types';
 import { getApiClient } from '../api/client';
+import { isSupabaseConfigured } from '../supabase';
 
 interface AppState {
   campaigns: Campaign[];
@@ -61,6 +62,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // A configured Supabase project is the real-app mode. Do not show the old
+    // demo dataset there; the Supabase data adapter is added in the next phase.
+    if (isSupabaseConfigured) {
+      setIsLoading(false);
+      return;
+    }
     loadData();
   }, []);
 

@@ -14,7 +14,7 @@ export interface OnboardingProfile {
 }
 
 interface OnboardingFlowProps {
-  onComplete: (profile: OnboardingProfile) => void;
+  onComplete: (profile: OnboardingProfile) => void | Promise<void>;
 }
 
 const steps = [
@@ -33,6 +33,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [companySize, setCompanySize] = useState('5–50 employees');
   const [offer, setOffer] = useState('');
   const [mailboxProvider, setMailboxProvider] = useState<OnboardingProfile['mailboxProvider']>('Set up later');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const canContinue = useMemo(() => {
     if (step === 0) return workspaceName.trim().length >= 2;
@@ -40,18 +42,26 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     return true;
   }, [step, workspaceName, industry, geography, offer]);
 
-  const finish = () => {
-    onComplete({
-      workspaceName: workspaceName.trim(),
-      role,
-      industry: industry.trim(),
-      geography: geography.trim(),
-      companySize,
-      offer: offer.trim(),
-      mailboxProvider,
-      mailboxStatus: mailboxProvider === 'Set up later' ? 'pending' : 'pending',
-      completedAt: new Date().toISOString(),
-    });
+  const finish = async () => {
+    setIsSaving(true);
+    setError('');
+    try {
+      await onComplete({
+        workspaceName: workspaceName.trim(),
+        role,
+        industry: industry.trim(),
+        geography: geography.trim(),
+        companySize,
+        offer: offer.trim(),
+        mailboxProvider,
+        mailboxStatus: 'pending',
+        completedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'We could not save your workspace. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -127,7 +137,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             )}
           </div>
 
-          <div className="flex items-center justify-between pt-8 mt-8 border-t border-black/[0.07]"><button onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0} className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#686868] hover:bg-stone-100 disabled:opacity-30 flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Back</button><button onClick={() => step === steps.length - 1 ? finish() : setStep((current) => current + 1)} disabled={!canContinue} className="px-5 py-2.5 rounded-xl text-sm font-medium text-white bg-[#3157FF] hover:bg-[#2545D9] disabled:opacity-40 flex items-center gap-2 shadow-[0_8px_20px_rgba(49,87,255,0.18)]">{step === steps.length - 1 ? 'Open workspace' : 'Continue'}{step === steps.length - 1 ? <Check className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}</button></div>
+          {error && <div role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
+          <div className="flex items-center justify-between pt-8 mt-8 border-t border-black/[0.07]"><button onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0 || isSaving} className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#686868] hover:bg-stone-100 disabled:opacity-30 flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Back</button><button onClick={() => step === steps.length - 1 ? finish() : setStep((current) => current + 1)} disabled={!canContinue || isSaving} className="px-5 py-2.5 rounded-xl text-sm font-medium text-white bg-[#3157FF] hover:bg-[#2545D9] disabled:opacity-40 flex items-center gap-2 shadow-[0_8px_20px_rgba(49,87,255,0.18)]">{isSaving ? 'Saving…' : step === steps.length - 1 ? 'Open workspace' : 'Continue'}{!isSaving && (step === steps.length - 1 ? <Check className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />)}</button></div>
         </div>
       </section>
     </main>

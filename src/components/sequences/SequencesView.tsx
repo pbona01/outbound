@@ -140,14 +140,14 @@ export function SequencesView() {
         <div className="p-5 bg-white rounded-2xl border border-black/[0.07] shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-4 h-fit">
           <div className="flex items-center justify-between border-b border-black/[0.06] pb-3">
             <h3 className="text-[15px] font-semibold text-[#111111]">
-              Step {selectedStep.stepNumber} Settings
+              {selectedStep ? `Step ${selectedStep.stepNumber} Settings` : 'Sequence setup'}
             </h3>
             <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-blue-50 text-[#3157FF]">
               Active
             </span>
           </div>
 
-          <div className="space-y-3 text-[13px]">
+          {selectedStep ? <div className="space-y-3 text-[13px]">
             <div className="space-y-1">
               <label className="text-[12px] font-medium text-[#686868]">Step Title</label>
               <input
@@ -189,15 +189,15 @@ export function SequencesView() {
                 <span className="bg-blue-50 px-2 py-0.5 rounded">{"{{detected_tech}}"}</span>
               </div>
             </div>
-          </div>
+          </div> : <p className="text-sm text-[#686868] leading-relaxed">Add your first sequence step to start building a follow-up cadence.</p>}
 
           <div className="pt-3 border-t border-black/[0.06]">
-            <button
+            {selectedStep && <button
               onClick={() => showToast('Template saved', 'Updated sequence step definition.')}
               className="w-full py-2 rounded-xl text-[13px] font-medium text-white bg-[#111111] hover:bg-black transition-colors"
             >
               Save Step Changes
-            </button>
+            </button>}
           </div>
         </div>
       </div>

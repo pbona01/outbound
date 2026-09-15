@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../lib/state/AppStateContext';
 import { useToast } from '../../lib/state/ToastContext';
-import { mockUser } from '../../data/mockData';
+import { useAuth } from '../../lib/auth/AuthProvider';
 import { CommandPalette } from '../common/CommandPalette';
 import { CampaignWizard } from '../campaigns/CampaignWizard';
 import { ProspectDrawer } from '../prospects/ProspectDrawer';
@@ -27,7 +27,11 @@ import { ProspectDrawer } from '../prospects/ProspectDrawer';
 export function AppLayout() {
   const location = useLocation();
   const { campaigns, prospects, inboxThreads, updateProspectStatus, addCampaign } = useAppState();
+  const { user, configured, signOut } = useAuth();
   const { showToast } = useToast();
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Your workspace';
+  const displayEmail = user?.email || 'Connect Supabase to enable your account';
+  const workspaceName = user?.user_metadata?.workspace_name || (configured ? 'Your workspace' : 'GrowthStudio');
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -66,12 +70,12 @@ export function AppLayout() {
                 <span className="font-semibold text-[15px] tracking-tight block text-[#111111] leading-tight">
                   OutboundOS
                 </span>
-                <span className="text-[11px] text-[#686868] truncate block">GrowthStudio</span>
+                  <span className="text-[11px] text-[#686868] truncate block">{workspaceName}</span>
               </div>
             </div>
 
             <button
-              onClick={() => showToast('Workspace Switcher', 'Currently on GrowthStudio (Owner).')}
+              onClick={() => showToast('Workspace Switcher', `Currently on ${workspaceName}.`)}
               className="p-1 rounded-md text-[#949494] hover:text-[#111111] hover:bg-stone-100 transition-colors"
             >
               <ChevronDown className="w-3.5 h-3.5" />
@@ -116,11 +120,11 @@ export function AppLayout() {
           {/* Quick Stat / Deliverability Pill */}
           <div className="p-3 mx-3 mb-3 rounded-xl bg-[#F7F7F5] border border-black/[0.05] space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-[#686868] font-medium">Mailbox Warmup</span>
-              <span className="text-emerald-700 font-semibold">98% Health</span>
+              <span className="text-[#686868] font-medium">{configured ? 'Mailbox setup' : 'Mailbox Warmup'}</span>
+              <span className={configured ? 'text-[#686868] font-semibold' : 'text-emerald-700 font-semibold'}>{configured ? 'Not connected' : '98% Health'}</span>
             </div>
             <div className="h-1 w-full bg-stone-200 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full" style={{ width: '98%' }} />
+              <div className={`h-full rounded-full ${configured ? 'bg-stone-300' : 'bg-emerald-500'}`} style={{ width: configured ? '12%' : '98%' }} />
             </div>
           </div>
 
@@ -128,17 +132,18 @@ export function AppLayout() {
           <div className="p-3 border-t border-black/[0.06] flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center text-xs font-semibold text-stone-700 shrink-0">
-                {mockUser.name.slice(0, 2).toUpperCase()}
+                {displayName.slice(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0">
                 <span className="font-semibold text-[13px] text-[#111111] truncate block leading-tight">
-                  {mockUser.name}
+                  {displayName}
                 </span>
                 <span className="text-[11px] text-[#949494] truncate block font-mono">
-                  {mockUser.email}
+                  {displayEmail}
                 </span>
               </div>
             </div>
+            {configured && <button onClick={() => signOut().catch(() => showToast('Sign out failed', 'Please try again.', 'error'))} className="text-[11px] text-[#686868] hover:text-[#111111]">Sign out</button>}
           </div>
         </aside>
 
