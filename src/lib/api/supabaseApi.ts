@@ -237,6 +237,9 @@ export class SupabaseApiClient implements ApiClient {
       const { error: insertError } = await supabase.from('prospects').insert(dbProspects);
       if (insertError) {
         console.error('Failed to enroll discovered prospects:', insertError.message);
+        // Rollback campaign creation to ensure atomicity
+        await supabase.from('campaigns').delete().eq('id', campaignId);
+        throw new Error(`Failed to enroll prospects: ${insertError.message}. Campaign creation rolled back.`);
       } else {
         // Update stats on the campaign
         const { count } = await supabase

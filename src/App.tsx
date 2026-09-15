@@ -40,7 +40,7 @@ function RootRoute() {
   }
 
   // User is authenticated. Check if onboarding is completed.
-  const onboardingCompleted = profile?.onboarding_completed || workspace || workspaces.length > 0;
+  const onboardingCompleted = Boolean(profile?.onboarding_completed);
   if (!onboardingCompleted) {
     return <Navigate to="/onboarding" replace />;
   }
@@ -57,8 +57,8 @@ function OnboardingRoute() {
   if (!configured) return <Navigate to="/" replace />;
   if (!user) return <Navigate to="/signin" replace />;
   
-  // Idempotency: If the user already has completed onboarding or has a workspace, route directly to dashboard
-  if (profile?.onboarding_completed || workspace || workspaces.length > 0) {
+  // Idempotency: If the user already has completed onboarding, route directly to dashboard
+  if (profile?.onboarding_completed) {
     return <Navigate to="/" replace />;
   }
 
