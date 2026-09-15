@@ -13,12 +13,11 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
+import { useToast } from '../../lib/state/ToastContext';
 
-interface AiResearchLabViewProps {
-  onShowToast: (title: string, description?: string, type?: 'success' | 'info' | 'error') => void;
-}
-
-export function AiResearchLabView({ onShowToast }: AiResearchLabViewProps) {
+export function AiResearchLabView() {
+  const { showToast } = useToast();
+  
   const [urlInput, setUrlInput] = useState('https://stoneandoakremodeling.com');
   const [targetRole, setTargetRole] = useState('Owner / Founder');
   const [isCrawling, setIsCrawling] = useState(false);
@@ -73,7 +72,7 @@ export function AiResearchLabView({ onShowToast }: AiResearchLabViewProps) {
     setIsCrawling(true);
     setTimeout(() => {
       setIsCrawling(false);
-      onShowToast('Domain Audited', `Extracted full ICP attributes and generated personalized email copy for ${urlInput}.`);
+      showToast('Domain Audited', `Extracted full ICP attributes and generated personalized email copy for ${urlInput}.`);
     }, 1200);
   };
 
@@ -82,7 +81,7 @@ export function AiResearchLabView({ onShowToast }: AiResearchLabViewProps) {
     navigator.clipboard.writeText(`${result.generatedEmail.subject}\n\n${result.generatedEmail.body}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    onShowToast('Copied to clipboard', 'Email subject and copy copied.');
+    showToast('Copied to clipboard', 'Email subject and copy copied.');
   };
 
   return (
@@ -141,7 +140,13 @@ export function AiResearchLabView({ onShowToast }: AiResearchLabViewProps) {
       </div>
 
       {/* Crawl Results Grid */}
-      {result && (
+      {isCrawling ? (
+        <div className="flex flex-col items-center justify-center py-20 px-4 border border-black/[0.07] bg-white rounded-2xl border-dashed">
+          <Loader2 className="w-8 h-8 text-[#3157FF] animate-spin mb-4" />
+          <p className="text-[14px] font-medium text-[#111111]">Running deep crawler...</p>
+          <p className="text-[13px] text-[#686868] mt-1">Analyzing website DOM, technologies, and conversion flows.</p>
+        </div>
+      ) : result ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column: Dossier, Opportunities, Tech */}
           <div className="space-y-6">
@@ -260,13 +265,21 @@ export function AiResearchLabView({ onShowToast }: AiResearchLabViewProps) {
             <div className="pt-4 border-t border-black/[0.06] flex items-center justify-between">
               <span className="text-[12px] text-[#686868]">No placeholder slop. Grounded in actual site crawl.</span>
               <button
-                onClick={() => onShowToast('Queued', 'Added directly to Texas Kitchen Remodelers sequence.')}
+                onClick={() => showToast('Queued', 'Added directly to Texas Kitchen Remodelers sequence.')}
                 className="px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-[#3157FF] hover:bg-[#2545D9] transition-colors"
               >
                 Queue into Sequence
               </button>
             </div>
           </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-20 px-4 border border-black/[0.07] bg-white rounded-2xl border-dashed">
+          <Globe className="w-8 h-8 text-stone-300 mb-4" />
+          <p className="text-[14px] font-medium text-[#111111]">Enter a domain to begin research</p>
+          <p className="text-[13px] text-[#686868] mt-1 text-center max-w-sm">
+            The AI engine will scrape the website, detect technologies, identify conversion friction, and draft a hyper-personalized email.
+          </p>
         </div>
       )}
     </div>

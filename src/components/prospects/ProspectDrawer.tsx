@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -136,8 +136,17 @@ Happy to send over the Figma mockup if you'd like to take a look.
     onClose();
   };
 
+  // Escape to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (prospect && e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [prospect, onClose]);
+
   return (
-    <div id="prospect-drawer-container" className="fixed inset-0 z-50 overflow-hidden flex justify-end">
+    <div id="prospect-drawer-container" className="fixed inset-0 z-50 overflow-hidden flex justify-end pointer-events-none">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -145,7 +154,8 @@ Happy to send over the Figma mockup if you'd like to take a look.
         exit={{ opacity: 0 }}
         transition={{ duration: 0.18 }}
         onClick={onClose}
-        className="fixed inset-0 bg-black/20 backdrop-blur-[1px]"
+        className="fixed inset-0 bg-black/20 backdrop-blur-[1px] pointer-events-auto"
+        aria-hidden="true"
       />
 
       {/* Drawer */}
@@ -154,7 +164,10 @@ Happy to send over the Figma mockup if you'd like to take a look.
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-        className="relative w-full max-w-[540px] bg-white h-full shadow-[0_0_50px_rgba(0,0,0,0.15)] flex flex-col z-10 border-l border-black/[0.08]"
+        className="relative w-full max-w-[540px] bg-white h-full shadow-[0_0_50px_rgba(0,0,0,0.15)] flex flex-col z-10 border-l border-black/[0.08] pointer-events-auto"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Prospect Details"
       >
         {/* Drawer Header */}
         <div className="p-5 border-b border-black/[0.06] flex items-start justify-between bg-white shrink-0">

@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Mail, CheckCircle2, Globe, Database, ArrowUpRight, Zap, RefreshCw, ShieldCheck } from 'lucide-react';
 
-interface IntegrationsViewProps {
-  onShowToast: (title: string, description?: string, type?: 'success' | 'info' | 'error') => void;
-}
+import { useToast } from "../../lib/state/ToastContext";
 
-export function IntegrationsView({ onShowToast }: IntegrationsViewProps) {
+
+export function IntegrationsView() { const { showToast } = useToast();
   const [integrations, setIntegrations] = useState([
     {
       id: 'google',
@@ -13,7 +12,6 @@ export function IntegrationsView({ onShowToast }: IntegrationsViewProps) {
       category: 'Email Provider',
       description: 'Send through authenticated corporate Gmail accounts with custom warm-up ramp.',
       connected: true,
-      account: 'alex@growthstudio.co',
       health: '98% Deliverability',
     },
     {
@@ -62,7 +60,7 @@ export function IntegrationsView({ onShowToast }: IntegrationsViewProps) {
         item.id === id ? { ...item, connected: !currentState } : item
       )
     );
-    onShowToast(
+    showToast(
       currentState ? `${name} Disconnected` : `${name} Connected`,
       currentState ? 'Integration paused.' : 'Authorized and active.'
     );

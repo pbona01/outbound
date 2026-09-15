@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import {
   Mail,
   CheckCircle2,
@@ -18,13 +19,13 @@ import {
   ThumbsDown,
 } from 'lucide-react';
 import { InboxThread } from '../../types';
+import { useAppState } from '../../lib/state/AppStateContext';
+import { useToast } from '../../lib/state/ToastContext';
 
-interface InboxViewProps {
-  threads: InboxThread[];
-  onShowToast: (title: string, description?: string, type?: 'success' | 'info' | 'error') => void;
-}
-
-export function InboxView({ threads, onShowToast }: InboxViewProps) {
+export function InboxView() {
+  const { inboxThreads: threads } = useAppState();
+  const { showToast } = useToast();
+  const { setSelectedProspectId } = useOutletContext<{ setSelectedProspectId: (id: string | null) => void }>();
   const [selectedCategory, setSelectedCategory] = useState<
     'all' | 'unread' | 'interested' | 'not_interested' | 'follow_up' | 'archived'
   >('interested');
@@ -59,13 +60,13 @@ export function InboxView({ threads, onShowToast }: InboxViewProps) {
   const handleUseAiReply = () => {
     if (activeThread) {
       setReplyText(activeThread.suggestedReply.text);
-      onShowToast('AI Draft Inserted', 'Reply placed into composer for your final manual review.');
+      showToast('AI Draft Inserted', 'Reply placed into composer for your final manual review.');
     }
   };
 
   const handleSendReply = () => {
     if (!replyText.trim()) return;
-    onShowToast('Response Dispatched', `Sent email to ${activeThread.prospectName} (${activeThread.email}).`);
+    showToast('Response Dispatched', `Sent email to ${activeThread.prospectName} (${activeThread.email}).`);
     setReplyText('');
   };
 
@@ -73,7 +74,7 @@ export function InboxView({ threads, onShowToast }: InboxViewProps) {
     setIsRegeneratingAi(true);
     setTimeout(() => {
       setIsRegeneratingAi(false);
-      onShowToast('Suggested Reply Updated', 'Generated alternative response focused on a quick 10-minute video walkthrough.');
+      showToast('Suggested Reply Updated', 'Generated alternative response focused on a quick 10-minute video walkthrough.');
     }, 500);
   };
 

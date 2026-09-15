@@ -62,11 +62,18 @@ export function CampaignWizard({
   // Sequence template choice
   const [selectedTemplate, setSelectedTemplate] = useState<'Value-led' | 'Direct' | 'Gentle'>('Value-led');
 
+  // Reset state when opened
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentStep(1);
+      setPipelineProgress({ discovered: 0, websitesChecked: 0, analyzedFit: 0, contactsFound: 0 });
+      setStreamingLeads([]);
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     let timer1: NodeJS.Timeout;
-    let timer2: NodeJS.Timeout;
-    let timer3: NodeJS.Timeout;
-    let timer4: NodeJS.Timeout;
+    const timeouts: NodeJS.Timeout[] = [];
 
     if (currentStep === 2) {
       setPipelineProgress({ discovered: 4, websitesChecked: 0, analyzedFit: 0, contactsFound: 0 });
@@ -96,19 +103,27 @@ export function CampaignWizard({
       ];
 
       sampleNames.forEach((item, index) => {
-        setTimeout(() => {
+        const t = setTimeout(() => {
           setStreamingLeads((prev) => [...prev, item]);
         }, 800 * (index + 1));
+        timeouts.push(t);
       });
     }
 
     return () => {
       clearInterval(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-      clearTimeout(timer4);
+      timeouts.forEach(clearTimeout);
     };
   }, [currentStep]);
+
+  // Escape to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isOpen && e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -136,13 +151,15 @@ export function CampaignWizard({
   };
 
   return (
-    <div id="campaign-wizard-modal" className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4">
+    <div id="campaign-wizard-modal" className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="campaign-wizard-title">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black/30 backdrop-blur-[2px]"
+        onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* Modal Container */}
@@ -155,7 +172,7 @@ export function CampaignWizard({
         {/* Wizard Header with Steps */}
         <div className="p-5 border-b border-black/[0.06] flex items-center justify-between bg-white shrink-0">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" id="campaign-wizard-title">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-[#3157FF]">
                 Step {currentStep} of 4
               </span>
@@ -533,7 +550,7 @@ export function CampaignWizard({
         <div className="p-4 border-t border-black/[0.06] bg-white flex items-center justify-between shrink-0">
           {currentStep > 1 ? (
             <button
-              onClick={() => setCurrentStep((prev) => (prev - 1) as any)}
+              onClick={() => setCurrentStep((prev) => (prev > 1 ? (prev - 1) as 1 | 2 | 3 | 4 : prev))}
               className="px-4 py-2 rounded-xl text-[13px] font-medium text-[#686868] hover:bg-stone-100 transition-colors flex items-center gap-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -551,7 +568,7 @@ export function CampaignWizard({
           <div className="flex items-center gap-2">
             {currentStep < 4 ? (
               <button
-                onClick={() => setCurrentStep((prev) => (prev + 1) as any)}
+                onClick={() => setCurrentStep((prev) => (prev < 4 ? (prev + 1) as 1 | 2 | 3 | 4 : prev))}
                 className="px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-[#3157FF] hover:bg-[#2545D9] transition-colors flex items-center gap-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
               >
                 <span>{currentStep === 1 ? 'Find Prospects' : 'Continue'}</span>

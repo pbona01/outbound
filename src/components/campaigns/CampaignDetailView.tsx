@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ArrowLeft,
   Pause,
@@ -18,25 +19,35 @@ import {
 } from 'lucide-react';
 import { Campaign, Prospect } from '../../types';
 import { getScoreColor, getStatusBadge } from '../../lib/utils';
+import { useAppState } from '../../lib/state/AppStateContext';
+import { useToast } from '../../lib/state/ToastContext';
 
-interface CampaignDetailViewProps {
-  campaign: Campaign;
-  prospects: Prospect[];
-  onBack: () => void;
-  onSelectProspect: (prospect: Prospect) => void;
-  onToggleStatus: (campaignId: string) => void;
-  onShowToast: (title: string, description?: string, type?: 'success' | 'info' | 'error') => void;
-}
+export function CampaignDetailView() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { campaigns, prospects, updateCampaignStatus } = useAppState();
+  const { showToast } = useToast();
+  const { setSelectedProspectId } = useOutletContext<{ setSelectedProspectId: (id: string | null) => void }>();
 
-export function CampaignDetailView({
-  campaign,
-  prospects,
-  onBack,
-  onSelectProspect,
-  onToggleStatus,
-  onShowToast,
-}: CampaignDetailViewProps) {
+  const campaign = campaigns.find(c => c.id === id);
+
   const [activeTab, setActiveTab] = useState<'overview' | 'prospects' | 'sequence' | 'settings'>('overview');
+
+  if (!campaign) {
+    return (
+      <div className="p-8 text-center text-[#686868]">
+        Campaign not found. <button onClick={() => navigate('/campaigns')} className="text-blue-600 hover:underline">Go back.</button>
+      </div>
+    );
+  }
+
+  const onBack = () => navigate('/campaigns');
+  const onSelectProspect = (p: Prospect) => setSelectedProspectId(p.id);
+  const onToggleStatus = async () => {
+    const newStatus = campaign.status === 'active' ? 'paused' : 'active';
+    await updateCampaignStatus(campaign.id, newStatus);
+    showToast(`Campaign ${newStatus}`, `Campaign "${campaign.name}" is now ${newStatus}.`);
+  };
 
   const campaignProspects = prospects.filter(
     (p) => p.campaignId === campaign.id || p.campaignName === campaign.name
@@ -44,7 +55,7 @@ export function CampaignDetailView({
 
   const funnelSteps = [
     { label: 'Prospects', value: campaign.stats.prospects, desc: 'Researched & Verified' },
-    { label: 'Contacted', value: campaign.stats.contacted || Math.round(campaign.stats.prospects * 0.86), desc: 'Step 1 Dispatched' },
+    { label: 'Contacted', value: campaign.stats.contacted, desc: 'Step 1 Dispatched' },
     { label: 'Replies', value: campaign.stats.replies, desc: 'Direct Responses' },
     { label: 'Interested', value: campaign.stats.positiveReplies, desc: 'Positive Intent' },
     { label: 'Meetings', value: campaign.stats.meetings, desc: 'Calls Scheduled' },
@@ -82,8 +93,8 @@ export function CampaignDetailView({
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              onToggleStatus(campaign.id);
-              onShowToast(
+              onToggleStatus();
+              showToast(
                 campaign.status === 'active' ? 'Campaign Paused' : 'Campaign Resumed',
                 `"${campaign.name}" schedule updated.`
               );

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -16,20 +17,20 @@ import {
 } from 'lucide-react';
 import { Prospect } from '../../types';
 import { getScoreColor, getStatusBadge } from '../../lib/utils';
+import { useAppState } from '../../lib/state/AppStateContext';
+import { useToast } from '../../lib/state/ToastContext';
 
-interface ProspectDiscoveryViewProps {
-  prospects: Prospect[];
-  onSelectProspect: (prospect: Prospect) => void;
-  onOpenCampaignWizard: () => void;
-  onShowToast: (title: string, description?: string, type?: 'success' | 'info' | 'error') => void;
-}
+export function ProspectDiscoveryView() {
+  const { prospects } = useAppState();
+  const { showToast } = useToast();
+  const { setSelectedProspectId, setIsCampaignWizardOpen } = useOutletContext<{ 
+    setSelectedProspectId: (id: string | null) => void,
+    setIsCampaignWizardOpen: (v: boolean) => void 
+  }>();
 
-export function ProspectDiscoveryView({
-  prospects,
-  onSelectProspect,
-  onOpenCampaignWizard,
-  onShowToast,
-}: ProspectDiscoveryViewProps) {
+  const onSelectProspect = (p: Prospect) => setSelectedProspectId(p.id);
+  const onOpenCampaignWizard = () => setIsCampaignWizardOpen(true);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [industryFilter, setIndustryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -95,12 +96,29 @@ export function ProspectDiscoveryView({
 
   const handleExportCSV = () => {
     const headers = 'Company,Industry,Location,Website,Contact,Role,Email,Fit Score,Website Health,Primary Issue,Status\n';
+    
+    const escapeCsv = (str: string) => `"${String(str).replace(/"/g, '""')}"`;
+    
     const rows = filteredProspects
-      .map(
-        (p) =>
-          `"${p.company.name}","${p.company.industry}","${p.company.location}","${p.company.websiteUrl}","${p.contact.fullName}","${p.contact.role}","${p.contact.email}",${p.fitScore},${p.company.websiteQualityScore},"${p.primaryProblem}","${p.status}"`
+      .map((p) =>
+        [
+          p.company.name,
+          p.company.industry,
+          p.company.location,
+          p.company.websiteUrl,
+          p.contact.fullName,
+          p.contact.role,
+          p.contact.email,
+          p.fitScore,
+          p.company.websiteQualityScore,
+          p.primaryProblem,
+          p.status,
+        ]
+          .map(escapeCsv)
+          .join(',')
       )
       .join('\n');
+      
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -109,12 +127,13 @@ export function ProspectDiscoveryView({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    onShowToast('CSV exported', `Exported ${filteredProspects.length} verified prospect records.`);
+    URL.revokeObjectURL(url);
+    showToast('CSV exported', `Exported ${filteredProspects.length} verified prospect records.`);
   };
 
   const handleBulkAddToCampaign = () => {
     if (selectedIds.size === 0) return;
-    onShowToast('Added to campaign queue', `Assigned ${selectedIds.size} prospects to Texas Kitchen Remodelers.`);
+    showToast('Added to campaign queue', `Assigned ${selectedIds.size} prospects to Texas Kitchen Remodelers.`);
     setSelectedIds(new Set());
   };
 

@@ -12,12 +12,10 @@ import {
   Sparkles,
   CheckCircle2,
 } from 'lucide-react';
+import { useToast } from '../../lib/state/ToastContext';
 
-interface SequencesViewProps {
-  onShowToast: (title: string, description?: string, type?: 'success' | 'info' | 'error') => void;
-}
-
-export function SequencesView({ onShowToast }: SequencesViewProps) {
+export function SequencesView() {
+  const { showToast } = useToast();
   const [steps, setSteps] = useState([
     {
       id: 'step-1',
@@ -67,7 +65,7 @@ export function SequencesView({ onShowToast }: SequencesViewProps) {
     setSteps((prev) =>
       prev.map((s) => (s.id === id ? { ...s, active: !s.active } : s))
     );
-    onShowToast('Sequence Updated', 'Step status adjusted.');
+    showToast('Sequence Updated', 'Step status adjusted.');
   };
 
   const selectedStep = steps.find((s) => s.id === activeStepId) || steps[0];
@@ -84,7 +82,7 @@ export function SequencesView({ onShowToast }: SequencesViewProps) {
         </div>
 
         <button
-          onClick={() => onShowToast('New Step Added', 'Appended Step 5 to the sequence.')}
+          onClick={() => showToast('New Step Added', 'Appended Step 5 to the sequence.')}
           className="px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-[#3157FF] hover:bg-[#2545D9] transition-colors flex items-center gap-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] shrink-0"
         >
           <Plus className="w-4 h-4" />
@@ -213,7 +211,7 @@ export function SequencesView({ onShowToast }: SequencesViewProps) {
 
           <div className="pt-3 border-t border-black/[0.06]">
             <button
-              onClick={() => onShowToast('Template saved', 'Updated sequence step definition.')}
+              onClick={() => showToast('Template saved', 'Updated sequence step definition.')}
               className="w-full py-2 rounded-xl text-[13px] font-medium text-white bg-[#111111] hover:bg-black transition-colors"
             >
               Save Step Changes

@@ -202,21 +202,22 @@ export function CommandPalette({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div id="command-palette-modal" className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
+        <div id="command-palette-modal" className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4 pointer-events-none" role="dialog" aria-modal="true" aria-label="Command Palette">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/25 backdrop-blur-[2px]"
+            className="fixed inset-0 bg-black/25 backdrop-blur-[2px] pointer-events-auto"
+            aria-hidden="true"
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.98, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: -8 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="relative w-full max-w-xl bg-white rounded-2xl border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col z-10"
+            className="relative w-full max-w-xl bg-white rounded-2xl border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col z-10 pointer-events-auto"
           >
             {/* Search Input Bar */}
             <div className="flex items-center px-4 py-3.5 border-b border-black/[0.06] gap-3">

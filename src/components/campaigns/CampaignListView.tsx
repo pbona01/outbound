@@ -1,24 +1,28 @@
 import { useState } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Plus, Search, Send, Users, MessageSquare, CheckCircle2, Calendar, Pause, Play } from 'lucide-react';
 import { Campaign } from '../../types';
+import { useAppState } from '../../lib/state/AppStateContext';
+import { useToast } from '../../lib/state/ToastContext';
 
-interface CampaignListViewProps {
-  campaigns: Campaign[];
-  onSelectCampaign: (campaign: Campaign) => void;
-  onCreateCampaign: () => void;
-  onToggleStatus: (campaignId: string) => void;
-  onShowToast: (title: string, description?: string, type?: 'success' | 'info' | 'error') => void;
-}
+export function CampaignListView() {
+  const navigate = useNavigate();
+  const { campaigns, updateCampaignStatus } = useAppState();
+  const { showToast } = useToast();
+  const { setIsCampaignWizardOpen } = useOutletContext<{ setIsCampaignWizardOpen: (v: boolean) => void }>();
 
-export function CampaignListView({
-  campaigns,
-  onSelectCampaign,
-  onCreateCampaign,
-  onToggleStatus,
-  onShowToast,
-}: CampaignListViewProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'draft'>('all');
+
+  const onSelectCampaign = (c: Campaign) => navigate(`/campaigns/${c.id}`);
+  const onCreateCampaign = () => setIsCampaignWizardOpen(true);
+  const onToggleStatus = async (id: string) => {
+    const c = campaigns.find(c => c.id === id);
+    if (!c) return;
+    const newStatus = c.status === 'active' ? 'paused' : 'active';
+    await updateCampaignStatus(id, newStatus);
+    showToast(`Campaign ${newStatus}`, `Campaign "${c.name}" is now ${newStatus}.`);
+  };
 
   const filtered = campaigns.filter((c) => {
     const matchesSearch =
@@ -110,7 +114,7 @@ export function CampaignListView({
                   onClick={(e) => {
                     e.stopPropagation();
                     onToggleStatus(campaign.id);
-                    onShowToast(
+                    showToast(
                       campaign.status === 'active' ? 'Campaign Paused' : 'Campaign Resumed',
                       `"${campaign.name}" schedule updated.`
                     );

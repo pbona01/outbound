@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   Plus,
   ArrowUpRight,
@@ -15,22 +16,17 @@ import {
 } from 'lucide-react';
 import { Campaign, NeedsAttentionItem } from '../../types';
 import { formatNumber } from '../../lib/utils';
+import { useAppState } from '../../lib/state/AppStateContext';
 
-interface OverviewViewProps {
-  campaigns: Campaign[];
-  needsAttention: NeedsAttentionItem[];
-  onCreateCampaign: () => void;
-  onSelectCampaign: (campaign: Campaign) => void;
-  onNavigateTab: (tab: string) => void;
-}
+export function OverviewView() {
+  const navigate = useNavigate();
+  const { campaigns, needsAttention } = useAppState();
+  const { setIsCampaignWizardOpen } = useOutletContext<{ setIsCampaignWizardOpen: (v: boolean) => void }>();
 
-export function OverviewView({
-  campaigns,
-  needsAttention,
-  onCreateCampaign,
-  onSelectCampaign,
-  onNavigateTab,
-}: OverviewViewProps) {
+  const onCreateCampaign = () => setIsCampaignWizardOpen(true);
+  const onSelectCampaign = (campaign: Campaign) => navigate(`/campaigns`); // could pass state in navigate if wanted
+  const onNavigateTab = (tab: string) => navigate(`/${tab}`);
+
   const [activeMetric, setActiveMetric] = useState<'sent' | 'replies' | 'positive' | 'meetings'>('replies');
   const [dateRange, setDateRange] = useState<'7D' | '30D' | '90D'>('30D');
   const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);

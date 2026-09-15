@@ -11,11 +11,10 @@ import {
   Server,
 } from 'lucide-react';
 
-interface SettingsViewProps {
-  onShowToast: (title: string, description?: string, type?: 'success' | 'info' | 'error') => void;
-}
+import { useToast } from "../../lib/state/ToastContext";
 
-export function SettingsView({ onShowToast }: SettingsViewProps) {
+
+export function SettingsView() { const { showToast } = useToast();
   const [workspaceName, setWorkspaceName] = useState('GrowthStudio');
   const [timezone, setTimezone] = useState('America/Chicago (Central Time)');
   const [dailyCap, setDailyCap] = useState(35);
@@ -88,7 +87,7 @@ export function SettingsView({ onShowToast }: SettingsViewProps) {
             <h3 className="text-[16px] font-semibold text-[#111111]">Connected Mailboxes & DNS Guard</h3>
           </div>
           <button
-            onClick={() => onShowToast('DNS Status', 'All SPF, DKIM, and DMARC records verified valid.')}
+            onClick={() => showToast('DNS Status', 'All SPF, DKIM, and DMARC records verified valid.')}
             className="text-[12px] text-[#3157FF] hover:underline font-medium"
           >
             Recheck DNS Handshake
@@ -151,7 +150,7 @@ export function SettingsView({ onShowToast }: SettingsViewProps) {
         <div className="flex items-center justify-between">
           <h3 className="text-[16px] font-semibold text-[#111111]">Team Members</h3>
           <button
-            onClick={() => onShowToast('Invite link generated', 'Copied teammate invitation link.')}
+            onClick={() => showToast('Invite link generated', 'Copied teammate invitation link.')}
             className="px-3 py-1.5 rounded-xl text-[12px] font-medium border border-black/[0.08] hover:bg-stone-50 transition-colors flex items-center gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -177,7 +176,7 @@ export function SettingsView({ onShowToast }: SettingsViewProps) {
       {/* Save Button */}
       <div className="flex justify-end">
         <button
-          onClick={() => onShowToast('Settings Saved', 'Workspace configuration updated successfully.')}
+          onClick={() => showToast('Settings Saved', 'Workspace configuration updated successfully.')}
           className="px-5 py-2.5 rounded-xl text-[13px] font-medium text-white bg-[#111111] hover:bg-black transition-colors"
         >
           Save Workspace Preferences
