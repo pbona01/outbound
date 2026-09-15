@@ -1,20 +1,57 @@
-export function loadStored<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
+import { Campaign, Prospect, InboxThread, NeedsAttentionItem, Sequence } from '../types';
+import { mockCampaigns, mockProspects, mockInboxThreads, mockNeedsAttention } from '../data/mockData';
 
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+const STORAGE_KEY = 'outboundos_state_v1';
+
+export interface AppStorageData {
+  campaigns: Campaign[];
+  prospects: Prospect[];
+  inboxThreads: InboxThread[];
+  needsAttention: NeedsAttentionItem[];
+  sequences: Sequence[];
 }
 
-export function saveStored<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
+export const storage = {
+  get: (): AppStorageData => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const data = localStorage.getItem(STORAGE_KEY);
+        if (data) {
+          return JSON.parse(data);
+        }
+      }
+    } catch (error) {
+      console.warn('Could not read from localStorage', error);
+    }
+    // Return empty state by default for clean new user experience
+    return {
+      campaigns: [],
+      prospects: [],
+      inboxThreads: [],
+      needsAttention: [],
+      sequences: [],
+    };
+  },
+  
+  set: (data: AppStorageData) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }
+    } catch (error) {
+      console.warn('Could not write to localStorage', error);
+    }
+  },
 
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Storage can be unavailable in private browsing or embedded previews.
+  clear: () => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (error) {
+      console.warn('Could not clear localStorage', error);
+    }
   }
-}
+};
+
+export default storage;

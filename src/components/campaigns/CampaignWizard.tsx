@@ -18,6 +18,8 @@ import {
   X,
 } from 'lucide-react';
 import { Campaign, Prospect } from '../../types';
+import { useAuth } from '../../lib/auth/AuthProvider';
+import { useWorkspace } from '../../lib/workspaces/WorkspaceProvider';
 
 interface CampaignWizardProps {
   isOpen: boolean;
@@ -32,6 +34,9 @@ export function CampaignWizard({
   onLaunchCampaign,
   onShowToast,
 }: CampaignWizardProps) {
+  const { profile, user } = useAuth();
+  const { workspace } = useWorkspace();
+  const sendingEmail = profile?.email || user?.email || (workspace?.name ? `${workspace.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@company.com` : 'sender@workspace.com');
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Form state
@@ -142,7 +147,7 @@ export function CampaignWizard({
         positiveReplies: 0,
         meetings: 0,
       },
-      mailboxEmail: 'alex@growthstudio.co',
+      mailboxEmail: sendingEmail,
       dailyLimit: 35,
       sequenceStepsCount: 4,
     });
@@ -514,7 +519,7 @@ export function CampaignWizard({
                 <div className="p-3.5 rounded-xl bg-stone-50 border border-black/[0.06]">
                   <span className="text-[11px] text-[#949494] uppercase tracking-wider block">Sending Mailbox</span>
                   <span className="font-semibold text-[#111111] text-[13px] block mt-0.5 truncate font-mono">
-                    alex@growthstudio.co
+                    {sendingEmail}
                   </span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-stone-50 border border-black/[0.06]">

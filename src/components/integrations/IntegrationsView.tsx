@@ -1,56 +1,48 @@
 import { useState } from 'react';
-import { Mail, CheckCircle2, Globe, Database, ArrowUpRight, Zap, RefreshCw, ShieldCheck } from 'lucide-react';
-
+import { Mail, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { useToast } from "../../lib/state/ToastContext";
+import { useWorkspace } from '../../lib/workspaces/WorkspaceProvider';
 
+export function IntegrationsView() {
+  const { showToast } = useToast();
+  const { workspace } = useWorkspace();
 
-export function IntegrationsView() { const { showToast } = useToast();
   const [integrations, setIntegrations] = useState([
     {
       id: 'google',
-      name: 'Google Workspace',
-      category: 'Email Provider',
-      description: 'Send through authenticated corporate Gmail accounts with custom warm-up ramp.',
-      connected: true,
-      health: '98% Deliverability',
+      name: 'Google Workspace / Gmail',
+      category: 'Mailbox Provider',
+      description: 'Connect sending Gmail mailboxes via Google Workspace OAuth for sequence dispatch.',
+      connected: workspace?.mailbox_provider === 'gmail',
+      account: workspace?.mailbox_provider === 'gmail' ? 'Connected via Workspace' : undefined,
     },
     {
       id: 'microsoft',
       name: 'Microsoft 365 / Outlook',
-      category: 'Email Provider',
+      category: 'Mailbox Provider',
       description: 'Connect enterprise Outlook mailboxes with automatic graph API token rotation.',
       connected: false,
     },
     {
       id: 'hubspot',
       name: 'HubSpot CRM',
-      category: 'CRM',
+      category: 'CRM Integration',
       description: 'Auto-sync positive replies, create contacts, and advance deal stages upon meeting booking.',
-      connected: true,
-      account: 'GrowthStudio Portal (ID: 882041)',
-    },
-    {
-      id: 'salesforce',
-      name: 'Salesforce Sales Cloud',
-      category: 'CRM',
-      description: 'Bi-directional lead sync, opportunity stage mapping, and AE assignment rules.',
       connected: false,
     },
     {
       id: 'slack',
       name: 'Slack Alerts',
       category: 'Notifications',
-      description: 'Stream positive and interested lead replies directly to #sales-pipeline in real time.',
-      connected: true,
-      account: '#outbound-hot-leads',
+      description: 'Stream positive lead replies directly to your team Slack channel in real time.',
+      connected: false,
     },
     {
       id: 'webhook',
       name: 'Webhooks & Zapier',
-      category: 'Automation',
-      description: 'Trigger custom workflows whenever a prospect replies, books, or is categorized as high fit.',
-      connected: true,
-      account: 'Active endpoint: api.growthstudio.co/webhooks/leads',
+      category: 'Custom Automation',
+      description: 'Trigger custom API actions whenever a prospect replies or is categorized as interested.',
+      connected: false,
     },
   ]);
 
@@ -61,8 +53,8 @@ export function IntegrationsView() { const { showToast } = useToast();
       )
     );
     showToast(
-      currentState ? `${name} Disconnected` : `${name} Connected`,
-      currentState ? 'Integration paused.' : 'Authorized and active.'
+      currentState ? `${name} Disconnected` : `${name} Connection Requested`,
+      currentState ? 'Provider disconnected.' : 'Follow setup dialog to connect provider keys.'
     );
   };
 
@@ -70,9 +62,9 @@ export function IntegrationsView() { const { showToast } = useToast();
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-[26px] font-semibold text-[#111111] tracking-tight">Integrations & Connected Tools</h1>
+        <h1 className="text-[26px] font-semibold text-[#111111] tracking-tight">Integrations & Mailboxes</h1>
         <p className="text-[14px] text-[#686868] mt-0.5">
-          Connect your sending mailboxes, CRM destinations, and real-time webhook subscribers.
+          Connect sending mailboxes, CRM targets, and custom notification webhooks.
         </p>
       </div>
 
@@ -111,14 +103,7 @@ export function IntegrationsView() { const { showToast } = useToast();
             </div>
 
             <div className="pt-4 border-t border-black/[0.05] flex items-center justify-between">
-              {item.health ? (
-                <span className="text-[12px] text-emerald-700 font-medium flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  {item.health}
-                </span>
-              ) : (
-                <span className="text-[12px] text-[#949494]">OAuth 2.0 / REST</span>
-              )}
+              <span className="text-[12px] text-[#949494]">OAuth 2.0 / REST API</span>
 
               <button
                 onClick={() => handleToggle(item.id, item.name, item.connected)}
