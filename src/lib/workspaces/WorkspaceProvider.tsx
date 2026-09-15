@@ -48,13 +48,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const configured = isSupabaseConfigured();
+  const configured = Boolean(isSupabaseConfigured);
 
   const loadWorkspaces = async () => {
     setIsLoading(true);
     setError(null);
 
-    if (!configured) {
+    if (!configured || !supabase) {
       try {
         const storedWs = localStorage.getItem('outbound_workspace_data');
         if (storedWs) {
@@ -62,12 +62,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           setWorkspace(parsed);
           setWorkspaces([parsed]);
         } else {
-          setWorkspace(null);
-          setWorkspaces([]);
+          setWorkspace(MOCK_FALLBACK_WORKSPACE);
+          setWorkspaces([MOCK_FALLBACK_WORKSPACE]);
         }
       } catch {
-        setWorkspace(null);
-        setWorkspaces([]);
+        setWorkspace(MOCK_FALLBACK_WORKSPACE);
+        setWorkspaces([MOCK_FALLBACK_WORKSPACE]);
       }
       setIsLoading(false);
       return;
@@ -128,7 +128,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('outbound_workspace_data', JSON.stringify(updated));
     }
 
-    if (configured) {
+    if (configured && supabase) {
       const { error: err } = await supabase.from('workspaces').update(updates).eq('id', workspace.id);
       if (err) throw err;
     }
@@ -136,7 +136,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   };
 
   const createWorkspace = async (data: Partial<Workspace>): Promise<Workspace | null> => {
-    if (!configured || !user) {
+    if (!configured || !user || !supabase) {
       const mockWs: Workspace = {
         id: `ws-${Date.now()}`,
         name: data.name || 'My Workspace',
@@ -224,7 +224,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 export function useWorkspace() {
   const context = useContext(WorkspaceContext);
   if (!context) {
-    throw new Error('useWorkspace must be used within a WorkspaceProvider');
+    return {
+      workspace: MOCK_FALLBACK_WORKSPACE,
+      workspaces: [MOCK_FALLBACK_WORKSPACE],
+      isLoading: false,
+      error: null,
+      switchWorkspace: () => {},
+      updateWorkspace: async () => MOCK_FALLBACK_WORKSPACE,
+      createWorkspace: async () => MOCK_FALLBACK_WORKSPACE,
+      refreshWorkspaces: async () => {},
+    };
   }
   return context;
 }

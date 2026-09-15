@@ -4,6 +4,7 @@ import { ToastProvider } from './lib/state/ToastContext';
 import { AppStateProvider } from './lib/state/AppStateContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { AuthProvider, useAuth } from './lib/auth/AuthProvider';
+import { WorkspaceProvider } from './lib/workspaces/WorkspaceProvider';
 import { supabase } from './lib/supabase';
 import { AuthPage } from './components/auth/AuthPage';
 import { LandingPage } from './components/marketing/LandingPage';
@@ -58,27 +59,29 @@ export default function App() {
     <ToastProvider>
       <BrowserRouter>
         <AuthProvider>
-          <AppStateProvider>
-            <Routes>
-              <Route path="/signin" element={<AuthPage mode="signin" />} />
-              <Route path="/signup" element={<AuthPage mode="signup" />} />
-              <Route path="/forgot-password" element={<AuthPage mode="reset" />} />
-              <Route path="/onboarding" element={<OnboardingRoute />} />
-              <Route path="/" element={<RootRoute />}>
-                <Route index element={<OverviewView />} />
-                <Route path="campaigns" element={<CampaignListView />} />
-                <Route path="campaigns/:id" element={<CampaignDetailView />} />
-                <Route path="prospects" element={<ProspectDiscoveryView />} />
-                <Route path="inbox" element={<InboxView />} />
-                <Route path="sequences" element={<SequencesView />} />
-                <Route path="analytics" element={<AnalyticsView />} />
-                <Route path="research" element={<AiResearchLabView />} />
-                <Route path="integrations" element={<IntegrationsView />} />
-                <Route path="settings" element={<SettingsView />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Route>
-            </Routes>
-          </AppStateProvider>
+          <WorkspaceProvider>
+            <AppStateProvider>
+              <Routes>
+                <Route path="/signin" element={<AuthPage mode="signin" />} />
+                <Route path="/signup" element={<AuthPage mode="signup" />} />
+                <Route path="/forgot-password" element={<AuthPage mode="reset" />} />
+                <Route path="/onboarding" element={<OnboardingRoute />} />
+                <Route path="/" element={<RootRoute />}>
+                  <Route index element={<OverviewView />} />
+                  <Route path="campaigns" element={<CampaignListView />} />
+                  <Route path="campaigns/:id" element={<CampaignDetailView />} />
+                  <Route path="prospects" element={<ProspectDiscoveryView />} />
+                  <Route path="inbox" element={<InboxView />} />
+                  <Route path="sequences" element={<SequencesView />} />
+                  <Route path="analytics" element={<AnalyticsView />} />
+                  <Route path="research" element={<AiResearchLabView />} />
+                  <Route path="integrations" element={<IntegrationsView />} />
+                  <Route path="settings" element={<SettingsView />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+              </Routes>
+            </AppStateProvider>
+          </WorkspaceProvider>
         </AuthProvider>
       </BrowserRouter>
     </ToastProvider>

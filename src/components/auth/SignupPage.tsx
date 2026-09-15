@@ -28,7 +28,7 @@ export function SignupPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isConfigured = isSupabaseConfigured();
+  const isConfigured = Boolean(isSupabaseConfigured);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
