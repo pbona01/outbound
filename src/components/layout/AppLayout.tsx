@@ -16,10 +16,13 @@ import {
   Search,
   Plus,
   Bell,
+  LogOut,
+  Building2,
 } from 'lucide-react';
 import { useAppState } from '../../lib/state/AppStateContext';
 import { useToast } from '../../lib/state/ToastContext';
-import { mockUser } from '../../data/mockData';
+import { useAuth } from '../../lib/auth/AuthProvider';
+import { useWorkspace } from '../../lib/workspaces/WorkspaceProvider';
 import { CommandPalette } from '../common/CommandPalette';
 import { CampaignWizard } from '../campaigns/CampaignWizard';
 import { ProspectDrawer } from '../prospects/ProspectDrawer';
@@ -28,16 +31,22 @@ export function AppLayout() {
   const location = useLocation();
   const { campaigns, prospects, inboxThreads, updateProspectStatus, addCampaign } = useAppState();
   const { showToast } = useToast();
+  const { profile, user, signOut } = useAuth();
+  const { workspace, workspaces, switchWorkspace } = useWorkspace();
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isCampaignWizardOpen, setIsCampaignWizardOpen] = useState(false);
-  
-  // Example for drawer
+  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
+
   const [selectedProspectId, setSelectedProspectId] = useState<string | null>(null);
   const selectedProspect = prospects.find(p => p.id === selectedProspectId) || null;
 
   const interestedInboxCount = inboxThreads.filter((t) => t.classification === 'interested').length;
+
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Alex Vance';
+  const displayEmail = profile?.email || user?.email || 'alex@growthstudio.co';
+  const workspaceName = workspace?.name || 'GrowthStudio';
 
   const navItems = [
     { id: '', label: 'Overview', icon: LayoutDashboard },
@@ -57,25 +66,51 @@ export function AppLayout() {
         {/* Desktop Sidebar */}
         <aside className="hidden lg:flex w-64 flex-col bg-white border-r border-black/[0.07] shrink-0 select-none z-20">
           {/* Logo & Workspace */}
-          <div className="p-4 border-b border-black/[0.06] flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#111111] text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
-                O
+          <div className="p-4 border-b border-black/[0.06] relative">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#111111] text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
+                  O
+                </div>
+                <div className="min-w-0">
+                  <span className="font-semibold text-[15px] tracking-tight block text-[#111111] leading-tight">
+                    OutboundOS
+                  </span>
+                  <span className="text-[11px] text-[#686868] truncate block">{workspaceName}</span>
+                </div>
               </div>
-              <div className="min-w-0">
-                <span className="font-semibold text-[15px] tracking-tight block text-[#111111] leading-tight">
-                  OutboundOS
-                </span>
-                <span className="text-[11px] text-[#686868] truncate block">GrowthStudio</span>
-              </div>
+
+              <button
+                onClick={() => setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen)}
+                className="p-1 rounded-md text-[#949494] hover:text-[#111111] hover:bg-stone-100 transition-colors"
+                title="Switch Workspace"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
             </div>
 
-            <button
-              onClick={() => showToast('Workspace Switcher', 'Currently on GrowthStudio (Owner).')}
-              className="p-1 rounded-md text-[#949494] hover:text-[#111111] hover:bg-stone-100 transition-colors"
-            >
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
+            {/* Workspace Switcher Popover */}
+            {isWorkspaceMenuOpen && (
+              <div className="absolute top-full left-3 right-3 mt-1 bg-white border border-black/10 rounded-2xl shadow-xl p-2 z-50">
+                <p className="text-[10px] font-semibold text-[#888] uppercase px-2 py-1 tracking-wider">Workspaces</p>
+                {workspaces.map((w) => (
+                  <button
+                    key={w.id}
+                    onClick={() => {
+                      switchWorkspace(w.id);
+                      setIsWorkspaceMenuOpen(false);
+                      showToast('Workspace Switched', `Active workspace is now ${w.name}`);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between ${
+                      w.id === workspace?.id ? 'bg-blue-50 text-[#3157FF] font-semibold' : 'hover:bg-stone-100 text-[#333]'
+                    }`}
+                  >
+                    <span className="truncate">{w.name}</span>
+                    <Building2 className="w-3.5 h-3.5 text-stone-400" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Navigation Items */}
@@ -117,28 +152,44 @@ export function AppLayout() {
           <div className="p-3 mx-3 mb-3 rounded-xl bg-[#F7F7F5] border border-black/[0.05] space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-[#686868] font-medium">Mailbox Warmup</span>
-              <span className="text-emerald-700 font-semibold">98% Health</span>
+              <span className="text-emerald-700 font-semibold">
+                {workspace?.mailbox_provider === 'Set up later' ? 'Pending Setup' : '98% Health'}
+              </span>
             </div>
             <div className="h-1 w-full bg-stone-200 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full" style={{ width: '98%' }} />
+              <div
+                className={`h-full rounded-full ${workspace?.mailbox_provider === 'Set up later' ? 'bg-amber-400' : 'bg-emerald-500'}`}
+                style={{ width: workspace?.mailbox_provider === 'Set up later' ? '40%' : '98%' }}
+              />
             </div>
           </div>
 
           {/* User Profile Bar */}
           <div className="p-3 border-t border-black/[0.06] flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center text-xs font-semibold text-stone-700 shrink-0">
-                {mockUser.name.slice(0, 2).toUpperCase()}
+              <div className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center text-xs font-semibold text-stone-700 shrink-0 uppercase">
+                {displayName.slice(0, 2)}
               </div>
               <div className="min-w-0">
                 <span className="font-semibold text-[13px] text-[#111111] truncate block leading-tight">
-                  {mockUser.name}
+                  {displayName}
                 </span>
                 <span className="text-[11px] text-[#949494] truncate block font-mono">
-                  {mockUser.email}
+                  {displayEmail}
                 </span>
               </div>
             </div>
+
+            <button
+              onClick={() => {
+                signOut();
+                showToast('Signed Out', 'You have been signed out.');
+              }}
+              className="p-1.5 rounded-lg text-stone-400 hover:text-red-600 hover:bg-stone-100 transition"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </aside>
 

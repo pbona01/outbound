@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Campaign, Prospect, InboxThread, NeedsAttentionItem, Sequence, CompanyResearchResult } from '../../types';
 import { getApiClient } from '../api/client';
+import { useWorkspace } from '../workspaces/WorkspaceProvider';
 
 interface AppState {
   campaigns: Campaign[];
@@ -28,6 +29,7 @@ interface AppState {
 const AppStateContext = createContext<AppState | undefined>(undefined);
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
+  const { workspace } = useWorkspace();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [inboxThreads, setInboxThreads] = useState<InboxThread[]>([]);
@@ -41,6 +43,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const loadData = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const [c, p, i, n, s] = await Promise.all([
         api.getCampaigns(),
         api.getProspects(),
@@ -62,7 +65,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [workspace?.id]);
 
   const refreshCampaigns = async () => {
     const c = await api.getCampaigns();
@@ -95,23 +98,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   };
 
   const updateCampaignStatus = async (id: string, status: Campaign['status']) => {
-    // Optimistic update
     setCampaigns(prev => prev.map(c => c.id === id ? { ...c, status } : c));
     try {
       await api.updateCampaign(id, { status });
     } catch (error) {
-      await refreshCampaigns(); // revert
+      await refreshCampaigns();
       throw error;
     }
   };
 
   const updateProspectStatus = async (id: string, status: Prospect['status']) => {
-    // Optimistic update
     setProspects(prev => prev.map(p => p.id === id ? { ...p, status } : p));
     try {
       await api.updateProspectStatus(id, status);
     } catch (error) {
-      await refreshProspects(); // revert
+      await refreshProspects();
       throw error;
     }
   };
@@ -147,7 +148,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   };
 
   const resetStorage = () => {
-    localStorage.removeItem('outboundos_state_v1');
+    localStorage.removeItem('outbound_workspace_id');
     window.location.reload();
   };
 

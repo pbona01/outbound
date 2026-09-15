@@ -201,6 +201,7 @@ export interface InboxThread {
   companyName: string;
   companyDomain: string;
   email: string;
+  subject?: string;
   classification: 'interested' | 'neutral' | 'not_interested' | 'follow_up';
   lastMessageSnippet: string;
   timestamp: string;

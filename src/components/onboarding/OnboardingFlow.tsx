@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Mail, Search, Sparkles, Target, Users } from 'lucide-react';
+import { useWorkspace } from '../../lib/workspaces/WorkspaceProvider';
+import { useAuth } from '../../lib/auth/AuthProvider';
 
 export interface OnboardingProfile {
   workspaceName: string;
@@ -15,6 +17,7 @@ export interface OnboardingProfile {
 
 interface OnboardingFlowProps {
   onComplete: (profile: OnboardingProfile) => void;
+  initialProfile?: Partial<OnboardingProfile>;
 }
 
 const steps = [
@@ -24,15 +27,20 @@ const steps = [
   { label: 'Ready', icon: Check },
 ];
 
-export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+export function OnboardingFlow({ onComplete, initialProfile }: OnboardingFlowProps) {
+  const { workspace, updateWorkspace, createWorkspace } = useWorkspace();
+  const { profile } = useAuth();
+
   const [step, setStep] = useState(0);
-  const [workspaceName, setWorkspaceName] = useState('');
-  const [role, setRole] = useState('Agency / consultancy');
-  const [industry, setIndustry] = useState('');
-  const [geography, setGeography] = useState('');
-  const [companySize, setCompanySize] = useState('5–50 employees');
-  const [offer, setOffer] = useState('');
-  const [mailboxProvider, setMailboxProvider] = useState<OnboardingProfile['mailboxProvider']>('Set up later');
+  const [workspaceName, setWorkspaceName] = useState(initialProfile?.workspaceName || workspace?.name || '');
+  const [role, setRole] = useState(initialProfile?.role || profile?.role || 'Agency / consultancy');
+  const [industry, setIndustry] = useState(initialProfile?.industry || workspace?.industry || '');
+  const [geography, setGeography] = useState(initialProfile?.geography || workspace?.geography || '');
+  const [companySize, setCompanySize] = useState(initialProfile?.companySize || workspace?.company_size || '5–50 employees');
+  const [offer, setOffer] = useState(initialProfile?.offer || workspace?.offer || '');
+  const [mailboxProvider, setMailboxProvider] = useState<OnboardingProfile['mailboxProvider']>(
+    initialProfile?.mailboxProvider || (workspace?.mailbox_provider as any) || 'Set up later'
+  );
 
   const canContinue = useMemo(() => {
     if (step === 0) return workspaceName.trim().length >= 2;
@@ -40,8 +48,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     return true;
   }, [step, workspaceName, industry, geography, offer]);
 
-  const finish = () => {
-    onComplete({
+  const finish = async () => {
+    const onboardingData: OnboardingProfile = {
       workspaceName: workspaceName.trim(),
       role,
       industry: industry.trim(),
@@ -51,8 +59,33 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       mailboxProvider,
       mailboxStatus: mailboxProvider === 'Set up later' ? 'pending' : 'pending',
       completedAt: new Date().toISOString(),
-    });
+    };
+
+    if (workspace) {
+      await updateWorkspace({
+        name: onboardingData.workspaceName,
+        industry: onboardingData.industry,
+        geography: onboardingData.geography,
+        company_size: onboardingData.companySize,
+        offer: onboardingData.offer,
+        mailbox_provider: onboardingData.mailboxProvider,
+        onboarding_completed_at: onboardingData.completedAt,
+      });
+    } else {
+      await createWorkspace({
+        name: onboardingData.workspaceName,
+        industry: onboardingData.industry,
+        geography: onboardingData.geography,
+        company_size: onboardingData.companySize,
+        offer: onboardingData.offer,
+        mailbox_provider: onboardingData.mailboxProvider,
+        onboarding_completed_at: onboardingData.completedAt,
+      });
+    }
+
+    onComplete(onboardingData);
   };
+
 
   return (
     <main className="min-h-screen bg-[#f5f5f2] text-[#111111] p-4 sm:p-8 flex items-center justify-center relative overflow-hidden">

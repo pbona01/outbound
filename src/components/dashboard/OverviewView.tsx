@@ -13,34 +13,46 @@ import {
   CheckCircle2,
   ChevronRight,
   Target,
+  Check,
+  Search,
+  Mail,
 } from 'lucide-react';
 import { Campaign, NeedsAttentionItem } from '../../types';
 import { formatNumber } from '../../lib/utils';
 import { useAppState } from '../../lib/state/AppStateContext';
+import { useAuth } from '../../lib/auth/AuthProvider';
+import { useWorkspace } from '../../lib/workspaces/WorkspaceProvider';
 
 export function OverviewView() {
   const navigate = useNavigate();
-  const { campaigns, needsAttention } = useAppState();
+  const { campaigns, needsAttention, prospects, inboxThreads } = useAppState();
+  const { profile, user } = useAuth();
+  const { workspace } = useWorkspace();
   const { setIsCampaignWizardOpen } = useOutletContext<{ setIsCampaignWizardOpen: (v: boolean) => void }>();
 
+  const userName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Operator';
+  const workspaceName = workspace?.name || 'GrowthStudio';
+
   const onCreateCampaign = () => setIsCampaignWizardOpen(true);
-  const onSelectCampaign = (campaign: Campaign) => navigate(`/campaigns`); // could pass state in navigate if wanted
+  const onSelectCampaign = (campaign: Campaign) => navigate(`/campaigns`);
   const onNavigateTab = (tab: string) => navigate(`/${tab}`);
 
   const [activeMetric, setActiveMetric] = useState<'sent' | 'replies' | 'positive' | 'meetings'>('replies');
   const [dateRange, setDateRange] = useState<'7D' | '30D' | '90D'>('30D');
   const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
 
-  // Clean timeseries data for the thin line chart
+  // Real aggregations calculated directly from AppState
+  const totalSent = campaigns.reduce((acc, c) => acc + (c.stats.sent || 0), 0);
+  const totalReplies = campaigns.reduce((acc, c) => acc + (c.stats.replies || 0), 0);
+  const totalPositive = campaigns.reduce((acc, c) => acc + (c.stats.positiveReplies || 0), 0);
+  const totalResearched = prospects.length;
+
   const chartPoints = [
-    { label: 'Sep 01', sent: 24, replies: 1, positive: 0, meetings: 0 },
-    { label: 'Sep 03', sent: 38, replies: 2, positive: 1, meetings: 0 },
-    { label: 'Sep 05', sent: 45, replies: 3, positive: 1, meetings: 1 },
-    { label: 'Sep 07', sent: 58, replies: 5, positive: 2, meetings: 1 },
-    { label: 'Sep 09', sent: 72, replies: 8, positive: 3, meetings: 2 },
-    { label: 'Sep 11', sent: 85, replies: 7, positive: 4, meetings: 1 },
-    { label: 'Sep 13', sent: 94, replies: 9, positive: 4, meetings: 2 },
-    { label: 'Sep 14', sent: 88, replies: 12, positive: 3, meetings: 1 },
+    { label: 'Day 1', sent: Math.round(totalSent * 0.1), replies: 0, positive: 0, meetings: 0 },
+    { label: 'Day 3', sent: Math.round(totalSent * 0.3), replies: Math.round(totalReplies * 0.2), positive: 0, meetings: 0 },
+    { label: 'Day 5', sent: Math.round(totalSent * 0.5), replies: Math.round(totalReplies * 0.4), positive: Math.round(totalPositive * 0.3), meetings: 0 },
+    { label: 'Day 7', sent: Math.round(totalSent * 0.75), replies: Math.round(totalReplies * 0.7), positive: Math.round(totalPositive * 0.6), meetings: 1 },
+    { label: 'Today', sent: totalSent, replies: totalReplies, positive: totalPositive, meetings: 1 },
   ];
 
   const currentValues = chartPoints.map((p) => p[activeMetric]);
@@ -71,8 +83,8 @@ export function OverviewView() {
       {/* Top Banner: Greeting & Create Campaign CTA */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-semibold text-[#111111] tracking-tight">Good morning, Alex</h1>
-          <p className="text-[14px] text-[#686868] mt-0.5">Here’s what’s happening across your outreach.</p>
+          <h1 className="text-[28px] font-semibold text-[#111111] tracking-tight">Good day, {userName}</h1>
+          <p className="text-[14px] text-[#686868] mt-0.5">Overview for {workspaceName}. Review audience discovery, AI research, and mailbox status.</p>
         </div>
         <button
           onClick={onCreateCampaign}
@@ -83,31 +95,72 @@ export function OverviewView() {
         </button>
       </div>
 
+      {/* Quick-Start Checklist for New Workspace */}
+      {campaigns.length === 0 && (
+        <div className="p-6 bg-blue-50/60 border border-blue-100 rounded-2xl space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#3157FF] text-white flex items-center justify-center">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-[#111]">Welcome to your new workspace</h2>
+              <p className="text-xs text-[#555]">Follow these 3 steps to set up your outbound pipeline:</p>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-3 pt-2">
+            <button
+              onClick={() => navigate('/prospects')}
+              className="p-3.5 bg-white rounded-xl border border-blue-100 text-left hover:border-blue-300 transition"
+            >
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#3157FF]"><Search className="w-4 h-4" /> 1. Discover Accounts</div>
+              <p className="text-[11px] text-[#666] mt-1">Search or import CSV target accounts matching your ICP.</p>
+            </button>
+
+            <button
+              onClick={() => setIsCampaignWizardOpen(true)}
+              className="p-3.5 bg-white rounded-xl border border-blue-100 text-left hover:border-blue-300 transition"
+            >
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#3157FF]"><Target className="w-4 h-4" /> 2. Launch Campaign</div>
+              <p className="text-[11px] text-[#666] mt-1">Define message sequences and daily send limits.</p>
+            </button>
+
+            <button
+              onClick={() => navigate('/integrations')}
+              className="p-3.5 bg-white rounded-xl border border-blue-100 text-left hover:border-blue-300 transition"
+            >
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#3157FF]"><Mail className="w-4 h-4" /> 3. Connect Mailbox</div>
+              <p className="text-[11px] text-[#666] mt-1">Authenticate Gmail OAuth to enable sending approval.</p>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 4 Clean Primary Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         {[
           {
             title: 'Prospects researched',
-            value: 1284,
-            change: '+12.4%',
+            value: totalResearched,
+            change: totalResearched > 0 ? `+${totalResearched}` : '0',
             icon: Target,
           },
           {
             title: 'Emails sent',
-            value: 862,
-            change: '+8.1%',
+            value: totalSent,
+            change: totalSent > 0 ? `+${totalSent}` : '0',
             icon: Send,
           },
           {
             title: 'Replies',
-            value: 47,
-            change: '+15.2%',
+            value: totalReplies,
+            change: totalReplies > 0 ? `+${totalReplies}` : '0',
             icon: MessageSquare,
           },
           {
             title: 'Interested',
-            value: 18,
-            change: '+22.0%',
+            value: totalPositive,
+            change: totalPositive > 0 ? `+${totalPositive}` : '0',
             icon: CheckCircle2,
           },
         ].map((item, idx) => (
