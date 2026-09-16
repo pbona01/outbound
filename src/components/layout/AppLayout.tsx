@@ -206,7 +206,7 @@ export function AppLayout() {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Top Context Bar */}
-          <header className="h-14 border-b border-black/[0.06] bg-white/80 backdrop-blur-[8px] px-4 sm:px-6 flex items-center justify-between shrink-0 z-10">
+          <header className="sticky top-0 h-14 border-b border-black/[0.06] bg-white/[0.72] px-4 shadow-[0_4px_18px_rgba(17,17,17,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-2xl supports-[backdrop-filter]:bg-white/[0.56] sm:px-6 flex items-center justify-between shrink-0 z-30">
             {/* Left: Mobile Toggle & Breadcrumb */}
             <div className="flex items-center gap-3">
               <button
