@@ -73,7 +73,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         <aside className="bg-[#111111] text-white p-7 sm:p-10 flex flex-col justify-between min-h-[260px] lg:min-h-[660px]">
           <div>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white text-[#111111] flex items-center justify-center font-bold">O</div>
+              <img src="/outbound-mark.svg" alt="Outbound" className="w-9 h-9 rounded-xl object-contain" />
               <span className="font-semibold tracking-tight">OutboundOS</span>
             </div>
             <div className="mt-16 max-w-xs">

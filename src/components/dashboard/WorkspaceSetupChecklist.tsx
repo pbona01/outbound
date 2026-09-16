@@ -46,7 +46,7 @@ export function WorkspaceSetupChecklist({ onCreateCampaign }: WorkspaceSetupChec
         isComplete: isProfileComplete,
         icon: UserCheck,
         actionText: isProfileComplete ? 'View profile' : 'Complete profile',
-        onClick: () => navigate('/app/settings'),
+        onClick: () => navigate('/settings'),
       },
       {
         id: 'workspace',
@@ -57,7 +57,7 @@ export function WorkspaceSetupChecklist({ onCreateCampaign }: WorkspaceSetupChec
         isComplete: isWorkspaceConfigured,
         icon: Building2,
         actionText: isWorkspaceConfigured ? 'View settings' : 'Configure workspace',
-        onClick: () => navigate('/app/settings'),
+        onClick: () => navigate('/settings'),
       },
       {
         id: 'prospect',
@@ -68,7 +68,7 @@ export function WorkspaceSetupChecklist({ onCreateCampaign }: WorkspaceSetupChec
         isComplete: isProspectAdded,
         icon: Search,
         actionText: isProspectAdded ? 'View prospects' : 'Discover prospects',
-        onClick: () => navigate('/app/prospects'),
+        onClick: () => navigate('/prospects'),
       },
       {
         id: 'campaign',
@@ -83,7 +83,7 @@ export function WorkspaceSetupChecklist({ onCreateCampaign }: WorkspaceSetupChec
           if (onCreateCampaign) {
             onCreateCampaign();
           } else {
-            navigate('/app/campaigns');
+            navigate('/campaigns');
           }
         },
       },
@@ -96,7 +96,7 @@ export function WorkspaceSetupChecklist({ onCreateCampaign }: WorkspaceSetupChec
         isComplete: isMailboxConnected,
         icon: Mail,
         actionText: isMailboxConnected ? 'Manage mailbox' : 'Connect mailbox',
-        onClick: () => navigate('/app/integrations'),
+        onClick: () => navigate('/integrations'),
       },
     ],
     [
@@ -210,7 +210,7 @@ export function WorkspaceSetupChecklist({ onCreateCampaign }: WorkspaceSetupChec
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <button
-            onClick={() => navigate('/app/prospects')}
+            onClick={() => navigate('/prospects')}
             className="p-4 rounded-2xl bg-white border border-black/[0.07] hover:border-black/[0.14] text-left transition-all hover:-translate-y-0.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
           >
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#3157FF] flex items-center justify-center mb-3">
@@ -225,7 +225,7 @@ export function WorkspaceSetupChecklist({ onCreateCampaign }: WorkspaceSetupChec
           <button
             onClick={() => {
               if (onCreateCampaign) onCreateCampaign();
-              else navigate('/app/campaigns');
+              else navigate('/campaigns');
             }}
             className="p-4 rounded-2xl bg-white border border-black/[0.07] hover:border-black/[0.14] text-left transition-all hover:-translate-y-0.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
           >
@@ -239,7 +239,7 @@ export function WorkspaceSetupChecklist({ onCreateCampaign }: WorkspaceSetupChec
           </button>
 
           <button
-            onClick={() => navigate('/app/research')}
+            onClick={() => navigate('/research')}
             className="p-4 rounded-2xl bg-white border border-black/[0.07] hover:border-black/[0.14] text-left transition-all hover:-translate-y-0.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
           >
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
@@ -252,7 +252,7 @@ export function WorkspaceSetupChecklist({ onCreateCampaign }: WorkspaceSetupChec
           </button>
 
           <button
-            onClick={() => navigate('/app/integrations')}
+            onClick={() => navigate('/integrations')}
             className="p-4 rounded-2xl bg-white border border-black/[0.07] hover:border-black/[0.14] text-left transition-all hover:-translate-y-0.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
           >
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">

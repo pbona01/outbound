@@ -1,5 +1,4 @@
 import { Campaign, Prospect, InboxThread, NeedsAttentionItem, Sequence } from '../types';
-import { mockCampaigns, mockProspects, mockInboxThreads, mockNeedsAttention } from '../data/mockData';
 
 const STORAGE_KEY = 'outboundos_state_v1';
 

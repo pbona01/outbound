@@ -12,15 +12,40 @@
     --accent: #3157FF;
   }
 
+  html {
+    transition: background-color 220ms ease, color 220ms ease;
+  }
+
+  html.dark {
+    color-scheme: dark;
+    --bg-app: #0d0f12;
+    --surface: #171a20;
+    --text-primary: #f5f7fb;
+    --text-secondary: #a7adb8;
+    --text-muted: #747b88;
+    --border-subtle: rgba(255, 255, 255, 0.1);
+    --border-hover: rgba(255, 255, 255, 0.18);
+  }
+
   body {
-    background-color: #F7F7F5;
+    background-color: var(--bg-app);
     background-image: radial-gradient(circle at 15% -10%, rgba(49, 87, 255, 0.07), transparent 28rem), radial-gradient(circle at 90% 0%, rgba(245, 158, 11, 0.05), transparent 24rem);
-    color: #111111;
+    color: var(--text-primary);
+    transition: background-color 220ms ease, color 220ms ease;
     font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.011em;
   }
+
+  html.dark body { background-image: radial-gradient(circle at 15% -10%, rgba(49, 87, 255, 0.14), transparent 28rem), radial-gradient(circle at 90% 0%, rgba(52, 211, 153, 0.06), transparent 24rem); }
+  html.dark [class~="bg-white"] { background-color: #171a20 !important; }
+  html.dark [class~="bg-[#F7F7F5]"] { background-color: #0d0f12 !important; }
+  html.dark [class~="bg-[#f5f5f2]"] { background-color: #0d0f12 !important; }
+  html.dark [class~="text-[#111111]"], html.dark [class~="text-[#111]"] { color: #f5f7fb !important; }
+  html.dark [class~="text-[#686868]"] { color: #a7adb8 !important; }
+  html.dark [class~="text-[#949494]"] { color: #747b88 !important; }
+  html.dark [class*="border-black/"] { border-color: rgba(255,255,255,.1) !important; }
 
   button, input, textarea, select {
     font: inherit;

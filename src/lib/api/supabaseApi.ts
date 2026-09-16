@@ -837,17 +837,17 @@ export class SupabaseApiClient implements ApiClient {
           companyId: p.companyId || `comp-${p.id}`,
           company: {
             id: p.company?.id || `comp-${p.id}`,
-            name: p.company?.name || 'Target Account',
+            name: p.company?.name || 'Unnamed account',
             domain: p.company?.domain || '',
-            industry: p.company?.industry || criteria.industry || 'Business Services',
-            location: p.company?.location || criteria.geography || 'United States',
+            industry: p.company?.industry || criteria.industry || '',
+            location: p.company?.location || criteria.geography || '',
             city: p.company?.city || '',
             state: p.company?.state || '',
-            country: p.company?.country || 'USA',
-            employeeCount: p.company?.employeeCount || '10-50',
+            country: p.company?.country || '',
+            employeeCount: p.company?.employeeCount || '',
             websiteUrl: p.company?.websiteUrl || (p.company?.domain ? `https://${p.company.domain}` : ''),
             websiteQualityScore: p.company?.websiteQualityScore || p.fitScore || 70,
-            description: p.company?.description || p.evidence || 'Target prospect account',
+            description: p.company?.description || p.evidence || '',
           },
           contact: {
             id: p.contact?.id || `cnt-${p.id}`,
@@ -858,7 +858,7 @@ export class SupabaseApiClient implements ApiClient {
             email: p.contact?.email || '',
             emailVerified: Boolean(p.contact?.emailVerified || p.contact?.email?.includes('@')),
           },
-          fitScore: p.fitScore || 70,
+          fitScore: p.fitScore ?? 0,
           fitScoreBreakdown: p.fitScoreBreakdown || {
             businessRelevance: 20,
             commercialValue: 15,
@@ -868,35 +868,22 @@ export class SupabaseApiClient implements ApiClient {
             digitalPresence: 5,
           },
           fitLabel: p.fitScore >= 85 ? 'Excellent fit' : p.fitScore >= 75 ? 'Strong fit' : 'Moderate fit',
-          primaryProblem: p.primaryProblem || 'Website conversion friction',
+          primaryProblem: p.primaryProblem || '',
           status: 'ready',
           campaignId: p.campaignId,
           research: p.research || {
-            summary: p.evidence || 'Analyzed target website and domain signals.',
-            whyTheyFit: ['Matches ICP criteria'],
-            websiteOpportunities: [
-              {
-                id: 'opp-1',
-                issue: p.primaryProblem || 'Conversion friction',
-                detail: p.evidence || 'Audit highlights optimization potential.',
-                sourceUrl: p.sourceUrl || (p.company?.domain ? `https://${p.company.domain}` : ''),
-              },
-            ],
+            summary: p.evidence || '',
+            whyTheyFit: [],
+            websiteOpportunities: [],
             techStack: [],
             recentSignals: [],
-            suggestedAngle: 'Focus on clear conversion improvements.',
+            suggestedAngle: '',
           },
           generatedEmail: p.generatedEmail || {
-            subject: `Quick idea for ${p.company?.name || 'your team'}`,
-            body: `Hi ${p.contact?.firstName || (p.contact?.fullName || '').split(' ')[0] || 'there'},\n\nNoticed ${p.company?.name || 'your company'} is growing. Thought of a quick way to improve conversions.\n\nBest,\n[Your Name]`,
-            personalizations: [
-              {
-                text: p.evidence || 'Site audit',
-                source: 'Website Audit',
-                explanation: 'Detected optimization opportunity',
-              },
-            ],
-            charCount: 140,
+            subject: '',
+            body: '',
+            personalizations: [],
+            charCount: 0,
           },
           activities: [
             {
@@ -918,26 +905,25 @@ export class SupabaseApiClient implements ApiClient {
 
   async researchCompany(domain: string, role?: string): Promise<CompanyResearchResult> {
     try {
-      const res = await fetch('/api/research', {
+      const res = await fetch('/api/research/company', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain, role }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        return data.result;
-      }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) return data.result ?? data;
+      throw new Error(data.error || 'The research service could not audit this domain.');
     } catch {
       // Fall through to error
     }
 
-    throw new Error('Research provider not connected. Domain inspection requires a live backend service.');
+    throw new Error('Research provider not connected. Add the server AI and website-research environment variables, then try again.');
   }
 
   async generatePersonalizedEmail(_prospectId: string, _campaignId: string): Promise<any> {
     try {
-      const res = await fetch('/api/draft-email', {
+      const res = await fetch('/api/ai/personalize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prospectId: _prospectId, campaignId: _campaignId }),
@@ -945,15 +931,12 @@ export class SupabaseApiClient implements ApiClient {
 
       if (res.ok) {
         const data = await res.json();
-        return data.email;
+        return data.draft;
       }
     } catch {
       // Fall through
     }
 
-    return {
-      subject: 'Outreach Follow-up',
-      body: 'Hi, reaching out regarding your current conversion pipeline.',
-    };
+    throw new Error('Email generation is unavailable. Configure Gemini and try again.');
   }
 }

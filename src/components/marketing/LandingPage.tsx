@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import { ThemeToggle } from '../common/ThemeToggle';
 import { ArrowRight, Check, ChevronRight, Command, Radar, Sparkles, Target, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -9,11 +10,7 @@ const capabilities = [
 ];
 
 function LogoMark({ small = false }: { small?: boolean }) {
-  return (
-    <span className={`${small ? 'h-8 w-8 rounded-[10px] text-sm' : 'h-9 w-9 rounded-xl text-base'} inline-flex items-center justify-center bg-[#111111] font-bold tracking-[-0.08em] text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)]`}>
-      O
-    </span>
-  );
+  return <img src="/outbound-mark.svg" alt="" className={`${small ? 'h-8 w-8 rounded-[10px]' : 'h-9 w-9 rounded-xl'} object-contain`} />;
 }
 
 function DashboardPreview() {
@@ -46,7 +43,7 @@ export function LandingPage() {
       <nav className="sticky top-4 z-40 mx-auto mt-4 flex w-[calc(100%-2rem)] max-w-6xl items-center justify-between rounded-2xl border border-black/[0.09] bg-white/[0.68] px-3 py-2 shadow-[0_8px_30px_rgba(17,17,17,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-2xl supports-[backdrop-filter]:bg-white/[0.52] sm:px-4" aria-label="Primary navigation">
         <Link to="/" className="flex items-center gap-2.5"><LogoMark /><span className="text-[15px] font-semibold tracking-[-0.03em]">Outbound</span></Link>
         <div className="hidden items-center gap-1 md:flex"><a href="#product" className="rounded-xl px-3 py-2 text-[12px] font-medium text-[#686868] transition-colors hover:bg-black/[0.05] hover:text-[#111111]">Product</a><a href="#workflow" className="rounded-xl px-3 py-2 text-[12px] font-medium text-[#686868] transition-colors hover:bg-black/[0.05] hover:text-[#111111]">How it works</a><a href="#principles" className="rounded-xl px-3 py-2 text-[12px] font-medium text-[#686868] transition-colors hover:bg-black/[0.05] hover:text-[#111111]">Principles</a></div>
-        <div className="flex items-center gap-1.5"><Link to="/signin" className="rounded-xl px-3 py-2 text-[12px] font-semibold text-[#686868] transition-colors hover:bg-black/[0.05] hover:text-[#111111]">Sign in</Link><Link to="/signup" className="rounded-xl bg-[#111111] px-3.5 py-2 text-[12px] font-semibold text-white shadow-[0_1px_2px_rgba(0,0,0,0.16)] transition-transform hover:-translate-y-px">Get started</Link></div>
+        <div className="flex items-center gap-1.5"><ThemeToggle /><Link to="/signin" className="rounded-xl px-3 py-2 text-[12px] font-semibold text-[#686868] transition-colors hover:bg-black/[0.05] hover:text-[#111111]">Sign in</Link><Link to="/signup" className="rounded-xl bg-[#111111] px-3.5 py-2 text-[12px] font-semibold text-white shadow-[0_1px_2px_rgba(0,0,0,0.16)] transition-transform hover:-translate-y-px">Get started</Link></div>
       </nav>
 
       <section id="product" className="relative mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 pt-20 sm:px-8 sm:pt-28 lg:grid-cols-[0.86fr_1.14fr] lg:gap-16 lg:pb-28">

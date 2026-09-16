@@ -48,7 +48,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
       <div className="absolute -top-40 -right-24 w-[420px] h-[420px] rounded-full bg-[#3157FF]/10 blur-3xl" />
       <div className="relative w-full max-w-md bg-white border border-black/[0.08] rounded-[28px] shadow-[0_24px_80px_rgba(17,17,17,0.1)] p-7 sm:p-10">
         <Link to="/" className="flex items-center gap-2.5 mb-10">
-          <span className="w-9 h-9 rounded-xl bg-[#111] text-white flex items-center justify-center font-bold">O</span>
+          <img src="/outbound-mark.svg" alt="Outbound" className="w-9 h-9 rounded-xl object-contain" />
           <span className="font-semibold tracking-tight">Outbound</span>
         </Link>
         <p className="text-[11px] uppercase tracking-[0.18em] text-[#3157FF] font-semibold">{isReset ? 'Account recovery' : 'Outbound workspace'}</p>

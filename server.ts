@@ -47,67 +47,48 @@ app.post('/api/discovery', async (req, res) => {
       const placeData = await fetchRes.json();
 
       if (placeData.results && Array.isArray(placeData.results)) {
-        discoveredCompanies = placeData.results.slice(0, limit).map((place: any, idx: number) => {
-          const cleanName = place.name.replace(/[^\w\s&]/gi, '');
-          const domain = `${cleanName.toLowerCase().replace(/\s+/g, '')}.com`;
+        discoveredCompanies = await Promise.all(placeData.results.slice(0, limit).map(async (place: any, idx: number) => {
+          let details: any = {};
+          if (place.place_id) {
+            const detailUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(place.place_id)}&fields=name,website,url&key=${googlePlacesApiKey}`;
+            const detailRes = await fetch(detailUrl);
+            const detailData = await detailRes.json().catch(() => ({}));
+            details = detailData.result || {};
+          }
           return {
             id: `disc-gplace-${idx}-${Date.now()}`,
             company: {
-              name: place.name,
-              domain: domain,
+              name: details.name || place.name,
+              // Places Text Search does not provide a website. Resolve it with a
+              // Place Details request before presenting a domain to the user.
+              domain: details.website ? new URL(details.website).hostname.replace(/^www\./, '') : '',
               industry: industry || 'Local Services',
               location: place.formatted_address || geography || 'United States',
             },
             contact: {
-              fullName: `${['Mark', 'Sarah', 'David', 'Elena', 'Michael'][idx % 5]} ${['Johnson', 'Davis', 'Miller', 'Vance', 'Wilson'][idx % 5]}`,
+              fullName: '',
               role: role || 'Owner & Operator',
-              email: `contact@${domain}`,
-              verified: true,
+              email: '',
+              verified: false,
             },
             fitScore: Math.min(98, 70 + (place.rating ? Math.round(place.rating * 5) : 15)),
             status: 'discovered',
             primaryProblem: 'High bounce rate on local search landing pages',
             evidence: `Verified local business on Google Places (${place.user_ratings_total || 12} reviews, ${place.rating || 4.8} rating)`,
             source: 'Google Places API',
-            sourceUrl: `https://www.google.com/maps/place/?q=place_id:${place.place_id}`,
+            sourceUrl: details.url || `https://www.google.com/maps/place/?q=place_id:${place.place_id}`,
             discoveredAt: new Date().toISOString(),
           };
-        });
+        }));
       }
     }
 
-    // Server-side fallback algorithm if Google Places API Key is not present or yields 0 results
+    // Never manufacture companies, domains, people, or email addresses. An empty
+    // result is safer than polluting a user's CRM with invented prospects.
     if (discoveredCompanies.length === 0) {
-      const cleanInd = industry.trim() || 'Custom';
-      const cleanGeo = geography.trim() || 'US';
-      const sampleNames = ['Apex', 'Vanguard', 'Summit', 'Pinnacle', 'Horizon', 'BlueWave', 'Frontier', 'Nexus'];
-
-      discoveredCompanies = sampleNames.slice(0, limit).map((prefix, idx) => {
-        const compName = `${prefix} ${cleanInd.split(' ')[0] || 'Growth'}`;
-        const domain = `${compName.toLowerCase().replace(/\s+/g, '')}.com`;
-        return {
-          id: `disc-srv-${idx}-${Date.now()}`,
-          company: {
-            name: compName,
-            domain: domain,
-            industry: cleanInd,
-            location: cleanGeo,
-          },
-          contact: {
-            fullName: `${['Alex', 'Jordan', 'Taylor', 'Morgan', 'Sam', 'Chris'][idx % 6]} ${['Reyes', 'Brooks', 'Chen', 'Patel', 'Wright', 'Kim'][idx % 6]}`,
-            role: role || 'Founder & Director',
-            email: `contact@${domain}`,
-            verified: true,
-          },
-          fitScore: 82 + (idx * 2) % 15,
-          status: 'discovered',
-          primaryProblem: 'Missing clear value proposition above the fold',
-          evidence: `Verified active web domain (${domain}) serving ${cleanGeo} market`,
-          source: 'Audience Discovery Engine',
-          sourceUrl: `https://${domain}`,
-          discoveredAt: new Date().toISOString(),
-        };
-      });
+      if (!googlePlacesApiKey) {
+        return res.status(503).json({ success: false, code: 'PROVIDER_NOT_CONFIGURED', error: 'Google Places discovery is not configured.' });
+      }
     }
 
     res.json({ success: true, count: discoveredCompanies.length, prospects: discoveredCompanies });
@@ -152,7 +133,11 @@ app.post('/api/research/company', async (req, res) => {
           .slice(0, 3000);
       }
     } catch {
-      scrapedText = `Public business website for ${cleanDomain} focusing on commercial services, client inquiries, and custom projects.`;
+      return res.status(502).json({ success: false, code: 'WEBSITE_UNAVAILABLE', error: `Could not fetch ${cleanDomain}. Check the domain and try again.` });
+    }
+
+    if (!scrapedText) {
+      return res.status(502).json({ success: false, code: 'WEBSITE_EMPTY', error: `The website at ${cleanDomain} returned no readable content.` });
     }
 
     const ai = getGeminiClient();
@@ -193,43 +178,7 @@ Extract real, factual insights and return strict JSON with:
       }
     }
 
-    if (!researchResult) {
-      const compName = scrapedTitle.split(/[-|_]/)[0].trim() || cleanDomain.split('.')[0].toUpperCase();
-      researchResult = {
-        companyName: compName,
-        domain: cleanDomain,
-        industry: 'Professional & Business Services',
-        location: 'United States',
-        score: 86,
-        decisionMaker: {
-          name: 'Chief Operating Officer',
-          role: role || 'Founder & Managing Director',
-          email: `contact@${cleanDomain}`,
-          verified: true,
-        },
-        techStack: ['WordPress', 'Google Analytics 4', 'HubSpot Form Integration'],
-        observations: [
-          {
-            issue: 'Primary homepage call-to-action lacks urgent incentive',
-            impact: 'Reduces visitor-to-lead conversion rate by an estimated 20-30%',
-            evidence: `Verified homepage DOM structure at ${targetUrl}`,
-            severity: 'high',
-          },
-          {
-            issue: 'Slow initial mobile rendering speed',
-            impact: 'Higher bounce rates from paid search traffic',
-            evidence: `Resource loading waterfall audit on ${cleanDomain}`,
-            severity: 'medium',
-          },
-        ],
-        generatedEmail: {
-          subject: `Quick question regarding ${compName}'s website lead conversion`,
-          body: `Hi team,\n\nI was reviewing ${cleanDomain} and noticed your team is running active growth campaigns. However, the main call-to-action placement on mobile could be capturing 20% more inquiries.\n\nWe built a quick instant-quote module that plugs into existing sites. Worth a 3-minute look?\n\nBest,\nAlex`,
-        },
-        evidenceUrls: [targetUrl],
-        confidenceScore: 92,
-      };
-    }
+    if (!researchResult) return res.status(502).json({ success: false, code: 'RESEARCH_FAILED', error: 'The AI research provider returned no structured result.' });
 
     res.json(researchResult);
   } catch (error: any) {
@@ -245,10 +194,8 @@ app.post('/api/ai/personalize', async (req, res) => {
     const { prospectId, campaignId, offer = '', prospectName = 'Prospect', domain = 'company.com' } = req.body;
     const ai = getGeminiClient();
 
-    let emailDraft = {
-      subject: `Improving ${domain}'s outreach conversion rate`,
-      body: `Hi ${prospectName},\n\nI reached out because we noticed ${domain} is expanding its customer base. We help companies like yours streamline conversion workflows with zero technical overhead.\n\nWould you be open to a 5-minute comparison next Tuesday?\n\nBest regards,\nAlex Vance`,
-    };
+    if (!ai) return res.status(503).json({ success: false, code: 'AI_NOT_CONFIGURED', error: 'Gemini is not configured for email generation.' });
+    let emailDraft: { subject: string; body: string } | null = null;
 
     if (ai) {
       try {
@@ -269,6 +216,8 @@ Return JSON only: { "subject": string, "body": string }`;
         console.warn('Gemini draft generation error:', e);
       }
     }
+
+    if (!emailDraft) return res.status(502).json({ success: false, code: 'DRAFT_FAILED', error: 'Gemini did not return a usable email draft.' });
 
     res.json({ success: true, prospectId, campaignId, draft: emailDraft });
   } catch (error: any) {
@@ -316,17 +265,7 @@ app.post('/api/mailboxes/gmail/send', async (req, res) => {
       // In production, query suppression_list database table
     }
 
-    res.json({
-      success: true,
-      messageId: `msg-${crypto.randomBytes(8).toString('hex')}`,
-      status: 'sent',
-      sentAt: new Date().toISOString(),
-      thread: {
-        id: threadId || `thread-${Date.now()}`,
-        lastMessageAt: new Date().toISOString(),
-        unread: false,
-      },
-    });
+    return res.status(501).json({ success: false, code: 'GMAIL_SEND_NOT_IMPLEMENTED', error: 'Gmail sending is locked until OAuth tokens are exchanged and stored securely.' });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

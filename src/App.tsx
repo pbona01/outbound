@@ -19,6 +19,7 @@ import { AiResearchLabView } from './components/research/AiResearchLabView';
 import { SequencesView } from './components/sequences/SequencesView';
 import { IntegrationsView } from './components/integrations/IntegrationsView';
 import { SettingsView } from './components/settings/SettingsView';
+import { ThemeProvider } from './lib/theme/ThemeProvider';
 
 function AuthLoading() {
   return <main className="min-h-screen bg-[#f5f5f2] flex items-center justify-center text-sm text-[#686868]">Loading your Outbound workspace…</main>;
@@ -131,7 +132,8 @@ function OnboardingRoute() {
 
 export default function App() {
   return (
-    <ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
       <BrowserRouter>
         <AuthProvider>
           <WorkspaceProvider>
@@ -159,6 +161,7 @@ export default function App() {
           </WorkspaceProvider>
         </AuthProvider>
       </BrowserRouter>
-    </ToastProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

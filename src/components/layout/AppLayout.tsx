@@ -24,6 +24,7 @@ import { useWorkspace } from '../../lib/workspaces/WorkspaceProvider';
 import { CommandPalette } from '../common/CommandPalette';
 import { CampaignWizard } from '../campaigns/CampaignWizard';
 import { ProspectDrawer } from '../prospects/ProspectDrawer';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 export function AppLayout() {
   const location = useLocation();
@@ -65,9 +66,7 @@ export function AppLayout() {
           {/* Logo & Workspace */}
           <div className="p-4 border-b border-black/[0.06] flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#111111] text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
-                O
-              </div>
+              <img src="/outbound-mark.svg" alt="Outbound" className="w-8 h-8 rounded-xl object-contain" />
               <div className="min-w-0">
                 <span className="font-semibold text-[15px] tracking-tight block text-[#111111] leading-tight">
                   OutboundOS
@@ -159,9 +158,7 @@ export function AppLayout() {
             <div className="relative w-72 bg-white h-full flex flex-col shadow-2xl z-10 border-r border-black/[0.08]">
               <div className="p-4 border-b border-black/[0.06] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#111111] text-white flex items-center justify-center font-bold text-xs">
-                    O
-                  </div>
+                  <img src="/outbound-mark.svg" alt="Outbound" className="w-7 h-7 rounded-lg object-contain" />
                   <span className="font-semibold text-[15px]">OutboundOS</span>
                 </div>
                 <button
@@ -220,6 +217,7 @@ export function AppLayout() {
 
             {/* Right: Search, Quick Action, Alerts */}
             <div className="flex items-center gap-2 sm:gap-3">
+              <ThemeToggle />
               <button
                 onClick={() => setIsCommandPaletteOpen(true)}
                 className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-black/[0.07] bg-[#F7F7F5]/80 hover:bg-stone-100 text-[12px] text-[#686868] transition-colors"

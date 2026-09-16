@@ -23,7 +23,7 @@ export function AiResearchLabView() {
   const { showToast } = useToast();
   const { researchCompany, addResearchedProspect, campaigns } = useAppState();
   
-  const [urlInput, setUrlInput] = useState('https://stoneandoakremodeling.com');
+  const [urlInput, setUrlInput] = useState('');
   const [targetRole, setTargetRole] = useState('Owner / Founder');
   const [isCrawling, setIsCrawling] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -31,38 +31,7 @@ export function AiResearchLabView() {
   const [showQueueDropdown, setShowQueueDropdown] = useState(false);
 
   // Result state
-  const [result, setResult] = useState<CompanyResearchResult | null>({
-    companyName: 'Stone & Oak Remodeling',
-    domain: 'stoneandoakremodeling.com',
-    industry: 'Kitchen & Bath Remodeling',
-    location: 'Austin, Texas',
-    decisionMaker: {
-      name: 'James Carter',
-      role: 'Founder & Principal Builder',
-      email: 'james@stoneandoakremodeling.com',
-      verified: true,
-    },
-    score: 92,
-    techStack: ['WordPress', 'Elementor', 'Google Tag Manager', 'Cloudflare CDN', 'WPForms'],
-    observations: [
-      {
-        issue: 'Primary consultation CTA is below the fold on mobile',
-        evidence: 'Hero viewport ends at project carousel; booking form starts at 1,480px scroll depth on iPhone 14.',
-      },
-      {
-        issue: 'Project portfolio showcases photos without client outcome context',
-        evidence: '/portfolio page has 24 high-res gallery items but zero timeline, budget, or square footage specs.',
-      },
-      {
-        issue: 'Mobile navigation drawer hides the Instant Estimate button',
-        evidence: 'Hamburger menu requires 2 taps to reveal the contact action; desktop displays it in sticky header.',
-      },
-    ],
-    generatedEmail: {
-      subject: 'Quick idea for Stone & Oak Remodeling',
-      body: `Hi James,\n\nI was reviewing Stone & Oak Remodeling's portfolio — your custom cabinetry work on the Rollingwood estate is exceptional.\n\nWhile browsing on mobile, I noticed your primary consultation CTA is located below the initial fold, and the quote link is tucked inside the hamburger menu. Prospective homeowners looking for $80k+ kitchen remodels often bounce before discovering your booking form.\n\nI put together a clean mobile concept that brings your project outcomes and instant consultation booking directly upfront.\n\nOpen to seeing a 2-minute video walkthrough?\n\n— Alex`,
-    },
-  });
+  const [result, setResult] = useState<CompanyResearchResult | null>(null);
 
   const handleRunCrawler = async (overrideUrl?: string) => {
     const targetUrl = overrideUrl || urlInput;
@@ -72,8 +41,8 @@ export function AiResearchLabView() {
       const data = await researchCompany(targetUrl, targetRole);
       setResult(data);
       showToast('Domain Audited', `Extracted ICP attributes and generated personalized email copy for ${data.domain}.`);
-    } catch {
-      showToast('Research Error', 'Failed to audit the target website domain.', 'error');
+    } catch (error) {
+      showToast('Research Error', error instanceof Error ? error.message : 'Failed to audit the target website domain.', 'error');
     } finally {
       setIsCrawling(false);
     }
@@ -223,9 +192,9 @@ export function AiResearchLabView() {
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-[#686868]">
                     Target Decision Maker
                   </span>
-                  <span className="text-[11px] font-medium text-emerald-700 flex items-center gap-1">
+                  <span className={`text-[11px] font-medium flex items-center gap-1 ${result.decisionMaker.verified ? 'text-emerald-700' : 'text-[#949494]'}`}>
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    Verified MX
+                    {result.decisionMaker.verified ? 'Verified contact' : 'Contact not verified'}
                   </span>
                 </div>
                 <div className="text-[14px] font-semibold text-[#111111]">{result.decisionMaker.name}</div>
@@ -308,7 +277,7 @@ export function AiResearchLabView() {
             </div>
 
             <div className="pt-4 border-t border-black/[0.06] flex items-center justify-between gap-3">
-              <span className="text-[12px] text-[#686868]">No placeholder slop. Grounded in actual site crawl.</span>
+              <span className="text-[12px] text-[#686868]">Generated from the live website crawl and AI analysis.</span>
               <div className="relative">
                 <button
                   onClick={() => setShowQueueDropdown(!showQueueDropdown)}

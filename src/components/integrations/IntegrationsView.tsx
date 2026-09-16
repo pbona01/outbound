@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, CheckCircle2, AlertCircle, Info, Loader2 } from 'lucide-react';
+import { Mail, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from "../../lib/state/ToastContext";
 import { useWorkspace } from '../../lib/workspaces/WorkspaceProvider';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
@@ -16,7 +16,6 @@ export function IntegrationsView() {
   const { workspace } = useWorkspace();
   const [mailboxes, setMailboxes] = useState<DbMailbox[]>([]);
   const [isLoadingMailboxes, setIsLoadingMailboxes] = useState(false);
-  const [showGmailOAuthInfo, setShowGmailOAuthInfo] = useState(false);
 
   useEffect(() => {
     async function loadMailboxes() {
@@ -89,7 +88,9 @@ export function IntegrationsView() {
   ];
 
   const handleGmailConnectClick = () => {
-    setShowGmailOAuthInfo(true);
+    if (connectedGmailMailbox) return;
+    // OAuth must begin on the server so client code never receives provider secrets.
+    window.location.assign('/api/auth/google/start');
   };
 
   const handlePlannedConnectClick = (name: string) => {
@@ -109,51 +110,6 @@ export function IntegrationsView() {
           Connect sending mailboxes, CRM targets, and custom notification webhooks.
         </p>
       </div>
-
-      {showGmailOAuthInfo && (
-        <div className="p-5 rounded-2xl border border-blue-200/80 bg-blue-50/50 space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0 text-blue-700">
-              <Info className="w-4 h-4" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-[14px] font-semibold text-blue-900">
-                Gmail OAuth Setup Planned
-              </h3>
-              <p className="text-[12px] text-blue-800 leading-relaxed">
-                Gmail OAuth is the next primary integration on our roadmap. Standard OAuth popups and token management flows will be supported soon.
-              </p>
-            </div>
-          </div>
-          <div className="p-4 rounded-xl bg-white/80 border border-blue-200/60 text-[12px] text-[#686868] font-mono space-y-2">
-            <div>
-              <strong className="text-[#111111] font-medium block font-sans mb-1">For Developers:</strong>
-              To activate an active campaign now, you can seed a connected mailbox row directly in the database using SQL or Supabase Studio:
-            </div>
-            <pre className="p-2 bg-stone-900 text-stone-200 rounded-lg overflow-x-auto text-[11px] leading-tight">
-{`INSERT INTO public.mailboxes (
-  workspace_id,
-  provider,
-  email,
-  status
-) VALUES (
-  '${workspace?.id || "your-workspace-uuid"}',
-  'google',
-  '${workspace?.name?.toLowerCase().replace(/[^a-z0-9]/g, '') || "sender"}@company.com',
-  'connected'
-);`}
-            </pre>
-          </div>
-          <div className="flex justify-end pt-1">
-            <button
-              onClick={() => setShowGmailOAuthInfo(false)}
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
