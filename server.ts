@@ -7,6 +7,8 @@ import crypto from 'crypto';
 const app = express();
 const PORT = 3000;
 
+export default app;
+
 app.use(express.json({ limit: '10mb' }));
 
 // Helper for Gemini AI client (lazy load to avoid crash if API key is not present)
@@ -225,6 +227,27 @@ Return JSON only: { "subject": string, "body": string }`;
   }
 });
 
+app.post('/api/ai/reply-assist', async (req, res) => {
+  try {
+    const { messages = [], prospectName = 'the prospect', bookingLink = '' } = req.body;
+    const ai = getGeminiClient();
+    if (!ai) return res.status(503).json({ success: false, code: 'AI_NOT_CONFIGURED', error: 'Gemini is not configured for reply assistance.' });
+    const prompt = `Analyze this outbound email thread and return JSON only in this shape:
+{ "classification": "interested"|"meeting_requested"|"question"|"not_now"|"not_interested"|"unsubscribe"|"out_of_office"|"unknown", "confidence": number, "reply": string, "shouldAutoSend": boolean }
+Prospect: ${prospectName}
+Booking link: ${bookingLink || 'none'}
+Messages: ${JSON.stringify(messages).slice(0, 12000)}
+Rules: never auto-send for unsubscribe, legal, pricing, complaints, unclear intent, or sensitive requests. If meeting intent is clear and a booking link exists, the reply may include only that link.`;
+    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+    const jsonMatch = (response.text || '').match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return res.status(502).json({ success: false, code: 'REPLY_ANALYSIS_FAILED', error: 'Gemini did not return a structured reply analysis.' });
+    const analysis = JSON.parse(jsonMatch[0]);
+    res.json({ success: true, analysis: { ...analysis, shouldAutoSend: Boolean(analysis.shouldAutoSend && bookingLink && ['interested', 'meeting_requested'].includes(analysis.classification)) } });
+  } catch (error: any) {
+    res.status(502).json({ success: false, code: 'REPLY_ANALYSIS_FAILED', error: error.message || 'Reply analysis failed.' });
+  }
+});
+
 // ----------------------------------------------------
 // 5. GMAIL OAUTH & MAILBOX CONNECTION ENDPOINTS
 // ----------------------------------------------------
@@ -350,4 +373,4 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) startServer();

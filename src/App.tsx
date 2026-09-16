@@ -95,6 +95,7 @@ function OnboardingRoute() {
         geography: onboardingData.geography,
         company_size: onboardingData.companySize,
         offer: onboardingData.offer,
+        booking_link: onboardingData.bookingLink,
         mailbox_provider: onboardingData.mailboxProvider,
       });
       if (dbWs) {

@@ -66,7 +66,7 @@ export function AppLayout() {
           {/* Logo & Workspace */}
           <div className="p-4 border-b border-black/[0.06] flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <img src="/outbound-mark.svg" alt="Outbound" className="w-8 h-8 rounded-xl object-contain" />
+              <img src="/outbound-logo.png" alt="Outbound" className="w-8 h-8 rounded-xl object-contain" />
               <div className="min-w-0">
                 <span className="font-semibold text-[15px] tracking-tight block text-[#111111] leading-tight">
                   OutboundOS
@@ -158,7 +158,7 @@ export function AppLayout() {
             <div className="relative w-72 bg-white h-full flex flex-col shadow-2xl z-10 border-r border-black/[0.08]">
               <div className="p-4 border-b border-black/[0.06] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <img src="/outbound-mark.svg" alt="Outbound" className="w-7 h-7 rounded-lg object-contain" />
+                  <img src="/outbound-logo.png" alt="Outbound" className="w-7 h-7 rounded-lg object-contain" />
                   <span className="font-semibold text-[15px]">OutboundOS</span>
                 </div>
                 <button

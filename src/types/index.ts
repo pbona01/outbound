@@ -18,6 +18,8 @@ export interface WorkspaceRecord {
   geography?: string;
   company_size?: string;
   offer?: string;
+  booking_link?: string;
+  ai_reply_mode?: 'suggest' | 'approve' | 'auto';
   created_at?: string;
   updated_at?: string;
 }

@@ -26,6 +26,8 @@ export function SettingsView() {
   const [geography, setGeography] = useState(workspace?.geography || 'United States');
   const [companySize, setCompanySize] = useState(workspace?.company_size || '10-50 employees');
   const [offer, setOffer] = useState(workspace?.offer || 'AI Web Optimization & Lead Gen');
+  const [bookingLink, setBookingLink] = useState(workspace?.booking_link || '');
+  const [aiReplyMode, setAiReplyMode] = useState<'suggest' | 'approve' | 'auto'>(workspace?.ai_reply_mode || 'suggest');
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -39,6 +41,8 @@ export function SettingsView() {
           geography,
           company_size: companySize,
           offer,
+          booking_link: bookingLink.trim(),
+          ai_reply_mode: aiReplyMode,
         });
         showToast('Workspace Saved', 'Settings updated in database.');
       }
@@ -60,6 +64,24 @@ export function SettingsView() {
         <p className="text-[14px] text-[#686868] mt-0.5">
           Manage sending mailbox preferences, target ICP parameters, and workspace configuration.
         </p>
+      </div>
+
+      <div className="p-6 bg-white rounded-2xl border border-black/[0.07] shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-4">
+        <div>
+          <h3 className="text-[16px] font-semibold text-[#111111]">Booking & AI reply preferences</h3>
+          <p className="text-[13px] text-[#686868] mt-1">Give interested prospects a clear next step and decide how much control AI has.</p>
+        </div>
+        <label className="block text-xs font-semibold text-[#333]">Booking link
+          <input type="url" value={bookingLink} onChange={(e) => setBookingLink(e.target.value)} placeholder="https://cal.com/your-name" className="mt-1.5 w-full px-3 py-2.5 bg-[#f9f9f8] border border-black/10 rounded-xl text-xs focus:outline-none focus:border-[#3157FF]" />
+        </label>
+        <label className="block text-xs font-semibold text-[#333]">AI reply behavior
+          <select value={aiReplyMode} onChange={(e) => setAiReplyMode(e.target.value as typeof aiReplyMode)} className="mt-1.5 w-full px-3 py-2.5 bg-[#f9f9f8] border border-black/10 rounded-xl text-xs focus:outline-none focus:border-[#3157FF]">
+            <option value="suggest">Suggest replies only</option>
+            <option value="approve">Draft replies for my approval</option>
+            <option value="auto">Automate low-risk replies (booking link only)</option>
+          </select>
+        </label>
+        <p className="text-[11px] text-[#686868]">Automatic mode must never handle unsubscribe, legal, pricing, or sensitive requests. Those stay human-reviewed.</p>
       </div>
 
       {/* Account Profile Card */}

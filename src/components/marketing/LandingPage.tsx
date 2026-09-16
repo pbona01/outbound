@@ -10,7 +10,7 @@ const capabilities = [
 ];
 
 function LogoMark({ small = false }: { small?: boolean }) {
-  return <img src="/outbound-mark.svg" alt="" className={`${small ? 'h-8 w-8 rounded-[10px]' : 'h-9 w-9 rounded-xl'} object-contain`} />;
+  return <img src="/outbound-logo.png" alt="" className={`${small ? 'h-8 w-8 rounded-[10px]' : 'h-9 w-9 rounded-xl'} object-contain`} />;
 }
 
 function DashboardPreview() {

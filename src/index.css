@@ -42,9 +42,12 @@
   html.dark [class~="bg-white"] { background-color: #171a20 !important; }
   html.dark [class~="bg-[#F7F7F5]"] { background-color: #0d0f12 !important; }
   html.dark [class~="bg-[#f5f5f2]"] { background-color: #0d0f12 !important; }
+  html.dark [class~="bg-[#fafaf8]"], html.dark [class~="bg-[#f9f9f8]"], html.dark [class~="bg-stone-50"], html.dark [class~="bg-stone-50/60"], html.dark [class~="bg-stone-50/80"], html.dark [class~="bg-stone-100"] { background-color: #20242c !important; }
+  html.dark [class~="bg-stone-200"], html.dark [class~="bg-stone-200/70"] { background-color: #2a303a !important; }
   html.dark [class~="text-[#111111]"], html.dark [class~="text-[#111]"] { color: #f5f7fb !important; }
   html.dark [class~="text-[#686868]"] { color: #a7adb8 !important; }
   html.dark [class~="text-[#949494]"] { color: #747b88 !important; }
+  html.dark [class~="text-stone-600"], html.dark [class~="text-stone-700"] { color: #c1c7d0 !important; }
   html.dark [class*="border-black/"] { border-color: rgba(255,255,255,.1) !important; }
 
   button, input, textarea, select {

@@ -8,6 +8,7 @@ export interface OnboardingProfile {
   geography: string;
   companySize: string;
   offer: string;
+  bookingLink: string;
   mailboxProvider: 'Google Workspace' | 'Microsoft 365' | 'Set up later';
   mailboxStatus: 'connected' | 'pending';
   completedAt: string;
@@ -32,6 +33,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [geography, setGeography] = useState('');
   const [companySize, setCompanySize] = useState('5–50 employees');
   const [offer, setOffer] = useState('');
+  const [bookingLink, setBookingLink] = useState('');
   const [mailboxProvider, setMailboxProvider] = useState<OnboardingProfile['mailboxProvider']>('Set up later');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -53,6 +55,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         geography: geography.trim(),
         companySize,
         offer: offer.trim(),
+        bookingLink: bookingLink.trim(),
         mailboxProvider,
         mailboxStatus: 'pending',
         completedAt: new Date().toISOString(),
@@ -73,7 +76,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         <aside className="bg-[#111111] text-white p-7 sm:p-10 flex flex-col justify-between min-h-[260px] lg:min-h-[660px]">
           <div>
             <div className="flex items-center gap-3">
-              <img src="/outbound-mark.svg" alt="Outbound" className="w-9 h-9 rounded-xl object-contain" />
+              <img src="/outbound-logo.png" alt="Outbound" className="w-9 h-9 rounded-xl object-contain" />
               <span className="font-semibold tracking-tight">OutboundOS</span>
             </div>
             <div className="mt-16 max-w-xs">
@@ -121,6 +124,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <div className="grid sm:grid-cols-2 gap-4"><label className="block space-y-2"><span className="text-sm font-medium">Industry</span><input autoFocus value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. kitchen remodelers" className="w-full px-4 py-3 rounded-xl border border-black/10 bg-[#fafaf8] outline-none focus:border-[#3157FF]" /></label><label className="block space-y-2"><span className="text-sm font-medium">Geography</span><input value={geography} onChange={(e) => setGeography(e.target.value)} placeholder="e.g. Texas" className="w-full px-4 py-3 rounded-xl border border-black/10 bg-[#fafaf8] outline-none focus:border-[#3157FF]" /></label></div>
                 <label className="block space-y-2"><span className="text-sm font-medium">Company size</span><select value={companySize} onChange={(e) => setCompanySize(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-black/10 bg-[#fafaf8] outline-none focus:border-[#3157FF]"><option>1–4 employees</option><option>5–50 employees</option><option>51–200 employees</option><option>201+ employees</option></select></label>
                 <label className="block space-y-2"><span className="text-sm font-medium">What are you offering?</span><textarea value={offer} onChange={(e) => setOffer(e.target.value)} placeholder="e.g. conversion-focused website redesigns" rows={3} className="w-full px-4 py-3 rounded-xl border border-black/10 bg-[#fafaf8] outline-none focus:border-[#3157FF] resize-none" /></label>
+                <label className="block space-y-2"><span className="text-sm font-medium">Booking link <span className="text-[#949494] font-normal">(optional)</span></span><input type="url" value={bookingLink} onChange={(e) => setBookingLink(e.target.value)} placeholder="https://cal.com/your-name" className="w-full px-4 py-3 rounded-xl border border-black/10 bg-[#fafaf8] outline-none focus:border-[#3157FF]" /><span className="text-xs text-[#686868]">Used in AI reply suggestions when a prospect asks to meet.</span></label>
               </div>
             )}
 

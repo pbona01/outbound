@@ -151,7 +151,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     signUp: async (email, password, fullName) => {
       if (!supabase) throw new Error('Supabase is not configured. Add the Vercel environment variables first.');
-      const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: `${window.location.origin}/onboarding`,
+        },
+      });
       if (error) throw error;
     },
     signOut: async () => {

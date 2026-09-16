@@ -11,6 +11,8 @@ export interface Workspace {
   geography?: string;
   company_size?: string;
   offer?: string;
+  booking_link?: string;
+  ai_reply_mode?: 'suggest' | 'approve' | 'auto';
   mailbox_provider?: string;
   onboarding_completed_at?: string;
   created_at?: string;

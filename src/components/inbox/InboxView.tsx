@@ -20,11 +20,13 @@ import {
 import { useAppState } from '../../lib/state/AppStateContext';
 import { useToast } from '../../lib/state/ToastContext';
 import { useAuth } from '../../lib/auth/AuthProvider';
+import { useWorkspace } from '../../lib/workspaces/WorkspaceProvider';
 
 export function InboxView() {
   const { inboxThreads: threads, sendReply, updateThreadClassification, isLoading } = useAppState();
   const { showToast } = useToast();
   const { profile, user } = useAuth();
+  const { workspace } = useWorkspace();
   const userName = profile?.full_name || user?.email?.split('@')[0] || 'You';
 
   const [selectedCategory, setSelectedCategory] = useState<
@@ -37,6 +39,8 @@ export function InboxView() {
   const [showCompanyDetails, setShowCompanyDetails] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isUpdatingClassification, setIsUpdatingClassification] = useState(false);
+  const [isGeneratingReply, setIsGeneratingReply] = useState(false);
+  const [aiReply, setAiReply] = useState<{ text: string; rationale?: string } | null>(null);
 
   const categories = [
     { id: 'all' as const, label: 'All Messages', count: threads.length },
@@ -75,6 +79,26 @@ export function InboxView() {
 
   const activeThread =
     threads.find((t) => t.id === selectedThreadId) || filteredThreads[0] || threads[0];
+
+  const handleGenerateAiReply = async () => {
+    if (!activeThread) return;
+    setIsGeneratingReply(true);
+    try {
+      const response = await fetch('/api/ai/reply-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: activeThread.messages, prospectName: activeThread.prospectName, bookingLink: workspace?.booking_link || '' }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Reply analysis failed.');
+      setAiReply({ text: data.analysis.reply, rationale: `${data.analysis.classification} · ${data.analysis.confidence}% confidence` });
+      showToast('Reply analyzed', 'AI prepared a response for your review.');
+    } catch (error) {
+      showToast('AI reply unavailable', error instanceof Error ? error.message : 'Could not analyze this reply.', 'error');
+    } finally {
+      setIsGeneratingReply(false);
+    }
+  };
 
   const handleUseAiReply = () => {
     if (activeThread?.suggestedReply?.text) {
@@ -388,27 +412,29 @@ export function InboxView() {
 
                 {/* AI Assistant Suggested Reply Box & Human Approval Composer */}
                 <div className="p-4 border-t border-black/[0.06] bg-[#F7F7F5]/40 space-y-3 shrink-0">
-                  {activeThread.suggestedReply?.text && (
+                  {(activeThread.suggestedReply?.text || aiReply?.text) && (
                     <div className="p-3 rounded-xl bg-white border border-black/[0.07] shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[#111111]">
                           <Sparkles className="w-3.5 h-3.5 text-[#3157FF]" />
                           <span>AI Suggested Response</span>
                         </div>
-                        <span className="text-[11px] text-[#949494]">Human Approval Required</span>
+                        <span className="text-[11px] text-[#949494]">{aiReply?.rationale || 'Review before sending'}</span>
                       </div>
 
                       <p className="text-[12px] text-[#686868] line-clamp-2 leading-relaxed bg-stone-50 p-2 rounded-lg border border-black/[0.04]">
-                        {activeThread.suggestedReply.text}
+                        {aiReply?.text || activeThread.suggestedReply?.text}
                       </p>
 
                       <div className="flex items-center justify-end">
-                        <button
-                          onClick={handleUseAiReply}
-                          className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-stone-100 hover:bg-stone-200 text-[#111111] transition-colors"
-                        >
-                          Use draft in composer
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button onClick={handleGenerateAiReply} disabled={isGeneratingReply} className="text-[11px] font-medium px-2.5 py-1 rounded-md border border-black/[0.08] hover:bg-stone-50 text-[#686868] transition-colors">
+                            {isGeneratingReply ? 'Analyzing…' : 'Generate with AI'}
+                          </button>
+                          <button onClick={handleUseAiReply} className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-stone-100 hover:bg-stone-200 text-[#111111] transition-colors">
+                            Use draft in composer
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
